@@ -1,0 +1,21 @@
+<section id="mapMuseeContainer">
+	<h2>Carte des collections du musée</h2>
+	<div>
+		<aside id="mapFilter">
+			<div>
+				<h3>Filtres</h3>
+				<p id="nb-items"></p>
+			</div>
+			<form class="search-bar" action="" id="search-bar"><fieldset id="record-search"><label for="with-records">Instruments enregistrés</label> <input type="checkbox" id="with-records" name="with-records" /></fieldset>
+				<div id="search-field"><input type="text" id="seeker" placeholder="Nom, Type, Facteur..." /> <button id="search" class="btn btn-default" type="submit" aria-label="Rechercher"> <img src="/ui/plug-in/integration/carte-instrument-musee/img/search.svg" alt="Rechercher" loading="lazy" /> </button></div>
+			</form>
+			<h3>Types d'Objets</h3>
+			<fieldset class="types" id="types-filter"></fieldset>
+			<h3>Localisation</h3>
+			<div class="custom-select"><select name="localisation" id="loc-select" placeholder="Choisissez une localisation"></select></div>
+			<div id="button-field"><button id="reset-button" class="btn btn-default" type="button">Réinitialiser les filtres</button> <button id="access-button" class="btn btn-default btn-accessible" type="button">Rechercher la sélection (nouvel onglet)</button></div>
+		</aside>
+		<div id="mapMusee"></div>
+		<div class="loader"></div>
+	</div>
+</section>

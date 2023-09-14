@@ -1,4 +1,4 @@
-/* Lien github : https://github.com/ChristopheLeonardi/carte-musee.git */
+/* Lien github : https://github.com/ChristopheLeonardi/carte-musee-syracuse */
 
 $(document).ready(function() {
 
@@ -134,7 +134,7 @@ const createCountriesLayers = data => {
 /* PROCESS DATA */
 const createDataObject = instruments_data => {
   // Get number by continent 
-  const c_data = { "pays" : [], "continents" : {}, "count_by_type" : {}, "raw_data" : instruments_data}
+  const c_data = { "pays" : [], "continents" : {}, "count_by_type" : {}, "raw_data" : instruments_data, "convert_iso_name" : {}}
 
   const continents = [...new Set(instruments_data.map(item => item.Continent))]
   continents.map(continent => { 
@@ -189,9 +189,12 @@ const createDataObject = instruments_data => {
       if(!c_data.pays.includes(item["Code ISO-2"])){
           c_data.pays.push(item["Code ISO-2"])
       }
+
+      // Coreespondance code / nom pays
+      c_data.convert_iso_name[item["Code ISO-2"]] = item["Pays"]
+
       c_data.count_by_type[item["Type d'objet"]] += 1      
   })
-  console.log(c_data)
   return c_data
 }
 
@@ -977,12 +980,17 @@ const createCartel = (e, notices) => {
       text_section.appendChild(link_container)
 
       /* Construction de l'url de la recherche par catégorie (tout voir) */
-      let name_system = window["object_type"].filter(type => { return notice["Type d'objet"] == type.label})
-      if (name_system.length){
+      let category = window["object_type"].filter(type => { return notice["Type d'objet"] == type.label})
+      if (category.length){
 
-          let facet = `FacetFilter:'{"_201":"${name_system[0].name_system}"}`
+          let facet = `FacetFilter:'{"_201":"${category[0].name_system}"}`
           let city = notice.Ville
-          let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${city}#/Search/(query:(${facet}',ForceSearch:!t,InitialSearch:!f,Page:0,PageRange:3,QueryString:${city},ResultSize:50,ScenarioCode:MUSEE,ScenarioDisplayMode:display-mosaic,SearchGridFieldsShownOnResultsDTO:!(),SearchLabel:'',SearchTerms:${city},SortField:!n,SortOrder:0,TemplateParams:(Scenario:'',Scope:MUSEE,Size:!n,Source:'',Support:'',UseCompact:!f),UseSpellChecking:!n),sst:4)`
+
+          /* 14/09/2023 la query ne fonctionne plus */
+          //let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${city}#/Search/(query:(${facet}',ForceSearch:!t,InitialSearch:!f,Page:0,PageRange:3,QueryString:${city},ResultSize:50,ScenarioCode:MUSEE,ScenarioDisplayMode:display-mosaic,SearchGridFieldsShownOnResultsDTO:!(),SearchLabel:'',SearchTerms:${city},SortField:!n,SortOrder:0,TemplateParams:(Scenario:'',Scope:MUSEE,Size:!n,Source:'',Support:'',UseCompact:!f),UseSpellChecking:!n),sst:4)`
+
+          /* 14/09/2023 test nouvelle query */
+          let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=+${category[0].name_system}+${city}`
 
           let category_search_link = document.createElement("a")
                   category_search_link.setAttribute("class", "btn btn-default btn-link")
@@ -1287,6 +1295,28 @@ const filtersActions = () => {
       createContinentMarkers(window.c_data)
       map.setView(window.initial_view.latlng, window.initial_view.zoom);
   })
+
+  /* Access button */
+  $("#access-button").on("click", e => {
+
+    /* Mise en attente d'une v2 (problématique du nombre de colonnes du tableau + formatage des données pour leurs affichage */
+    //accessTable(window.c_data)
+
+    let search = document.getElementById("seeker").value
+    let terms = (search.length > 0 || search == undefined) ? `+${search}` : ""
+
+    let cat = $("#types-filter input[checked=true]").val() || ""
+    let type = cat != "" ? `+${window.object_type.filter(type => { return type.type == cat})[0].name_system}` : ""
+
+    let country_code = $("#loc-select")[0].selectize.items[0]
+    let localisation = country_code != undefined ? `+${window.c_data.convert_iso_name[country_code]}` : ""
+
+    let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${terms + type + localisation}`
+
+    window.open(query_category_link, "_blank");
+
+  })
+
 }
 
 const displayResultNumber = data => {
@@ -1383,7 +1413,7 @@ const populateObjectTypes = data => {
           input.setAttribute("name", "types")
           input.setAttribute("id", "all-types")
           input.setAttribute("value", "all")
-          input.setAttribute("checked", "true")
+          input.setAttribute("checked", "")
           radio_container.appendChild(input)
           parent.appendChild(radio_container)
           
@@ -1445,12 +1475,15 @@ const populateObjectTypes = data => {
           radio_buttons[index].classList.remove("checked") 
           radio_buttons[index].removeAttribute("style")
       })
-      if (e.target.checked){
-          e.target.setAttribute("checked", "")
-          $(this).addClass("checked")
-          let current_type = window.object_type.filter(type => { return type.type == e.target.value})[0]
-          this.setAttribute("style", `background-color: ${current_type.color}`)
-      }
+      
+      e.target.setAttribute("checked", "true")
+
+      $(this).addClass("checked")
+      let current_type = window.object_type.filter(type => { return type.type == e.target.value})[0]
+
+      if (current_type == undefined) { return }
+      this.setAttribute("style", `background-color: ${current_type.color}`)
+      
   })
 }
 
@@ -1464,8 +1497,6 @@ const searchBox = () => {
   }
 
   $('.search-bar').submit(function(e) { e.preventDefault() })
-  //accessibilityButton(data, cats)
-
   $('#search').click(function(e) {
 
       var filterQuery = filterSearch()
@@ -1525,7 +1556,10 @@ const filterSearch = () => {
   return { "filtered": filtered.flat(), "query": queryReg }
 }
 
-const accessTable = data => {
+/* Tableau accessible Mise en attente sur une V2 */
+
+/* const accessTable = data => {
+  console.log(data)
 
   // Create modal
   if ($("#access-modal").length) {
@@ -1543,11 +1577,62 @@ const accessTable = data => {
   })
   modal.appendChild(closeButton)
 
-  var table = document.createElement("table")
-  var caption = document.createElement("caption")
-  caption.textContent = "Liste des institutions abonnées à Philharmonie à la demande"
+  var container = document.createElement("section")
+  let title = document.createElement("h3")
+  title.textContent =  "Liste des collections du musée"
+  Object.keys(data.continents).map(continent => {
 
-  table.appendChild(caption)
+    Object.keys(data.continents[continent].notices).map(country_code => {
+
+      if  (country_code == "") { country_code = "Sans Localisation"}
+      let country_name = window.c_data.convert_iso_name[country_code] || country_code
+
+      var table = document.createElement("table")
+      var caption = document.createElement("caption")
+      caption.textContent = `${continent} | ${country_name}`
+    
+      table.appendChild(caption)
+      container.appendChild(table)
+
+      //Add a header
+      var header = document.createElement("thead")
+
+      var typeHeader = document.createElement("th")
+      typeHeader.setAttribute("scope", "col")
+      typeHeader.textContent = "Type d'établissement"
+
+      var nomHeader = document.createElement("th")
+      nomHeader.setAttribute("scope", "col")
+      nomHeader.textContent = "Nom"
+
+      var adressHeader = document.createElement("th")
+      adressHeader.setAttribute("scope", "col")
+      adressHeader.textContent = "Adresse"
+
+      var telHeader = document.createElement("th")
+      telHeader.setAttribute("scope", "col")
+      telHeader.textContent = "Téléphone"
+
+      var mailHeader = document.createElement("th")
+      mailHeader.setAttribute("scope", "col")
+      mailHeader.textContent = "Mail"
+
+      var webHeader = document.createElement("th")
+      webHeader.setAttribute("scope", "col")
+      webHeader.textContent = "Site internet"
+
+      header.appendChild(typeHeader)
+      header.appendChild(nomHeader)
+      header.appendChild(adressHeader)
+      header.appendChild(telHeader)
+      header.appendChild(mailHeader)
+      header.appendChild(webHeader)
+
+      table.appendChild(header)
+
+    })
+  })
+  modal.appendChild(container)
 
   //Add a header
   var header = document.createElement("thead")
@@ -1587,7 +1672,7 @@ const accessTable = data => {
 
   //Add a body
 
-  document.getElementById("mapContainer").appendChild(modal)
+  document.getElementById("mapMusee").appendChild(modal)
 
   var body = document.createElement("tbody")
   data.sort((a, b) => (a.type_equipement_ou_lieu > b.type_equipement_ou_lieu) ? 1 : ((b.type_equipement_ou_lieu > a.type_equipement_ou_lieu) ? -1 : 0))
@@ -1632,7 +1717,7 @@ const accessTable = data => {
 
   })
 
-  table.appendChild(body)
+  //table.appendChild(body)
   modal.appendChild(table)
 
-}
+} */
