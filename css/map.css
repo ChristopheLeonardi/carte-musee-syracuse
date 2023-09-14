@@ -1,0 +1,804 @@
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+body{
+    background-color: #E6E6E6;
+    margin: 1vw 5vw;
+}
+/* Map Container */
+#mapMuseeContainer > div{
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+
+#mapFilter{
+    width: 25%;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 1em;
+} 
+h2, h3{
+    text-transform: uppercase;
+}
+h4{
+    font-size: 14px;
+}
+#mapMusee .country-marker.unknown p,
+#mapMusee .city-center p,
+#mapMusee .city-center p,
+#mapMusee .continent-popup p,
+#mapMusee .city-container p{
+    font-size: 1em;
+    font-weight: 400;
+}
+.selectize-input .item,
+.selectize-dropdown-content .option,
+p,label,li,option, button, select, input{
+    color: #001B3B ;
+}
+i{
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-style: italic;
+}   
+/* Filters */
+fieldset{
+    border: none;
+}
+#record-search{
+    border: none;
+    padding: 0 0 1em 0;
+    display: flex;
+    justify-content: space-between;
+}
+#search-field {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+}
+#search-field #seeker{
+    border-radius: 16px 0 0 16px;
+    border: 1px solid #001B3B;
+    padding: 5px;
+    width: 90%;
+    font-size: 14px;
+}
+#search-field #search{
+    border-radius: 0 16px 16px 0;
+    border: 1px solid #001B3B;
+    background-color: #001B3B;
+    padding: 0.5em;
+    width: 10%;
+    position: relative;
+    margin-bottom: 0;
+}
+#search-field #search:hover{
+    border: 1px solid #B3D6FD;
+    background-color: #B3D6FD;
+}
+#search-field #search img{
+    width: 16px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-59%, -53%);
+    position: absolute;
+}
+.selectize-control.single .selectize-input{
+    border-radius: 16px;
+    border: 1px solid #001B3B;
+    background-color: #fff;
+    background-image: none;
+    box-shadow: none;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: bold;
+}
+.selectize-control.single .selectize-input.input-active{
+    height: 2.8em;
+}
+
+.selectize-dropdown-content .option.selected{
+    background-color: #B3D6FD;
+    color: #001B3B;
+}
+.selectize-dropdown-content .option,
+.selectize-control.single .selectize-input .option{
+    display: flex;
+    justify-content: space-between;
+    width: 90%; 
+    flex-wrap: nowrap;
+}
+
+.selectize-dropdown-content .option span,
+.selectize-control.single .selectize-input .option span{
+    width: 45%;
+}
+.selectize-dropdown-content .option span:last-child,
+.selectize-control.single .selectize-input .option span:last-child{
+    width: 10%;
+}
+.selectize-dropdown-content .optgroup{
+    text-transform: capitalize;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: bold;
+}
+.selectize-control.single .selectize-input,
+.selectize-dropdown.single{
+    border-radius: 16px;
+    overflow: hidden;
+}
+.types{
+    padding: 0;
+}
+.types .radio{
+    text-transform: uppercase;
+    font-size: 0.8em;
+    padding: 0;
+    border-radius: 16px;
+    margin: 0 0 0.5em 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    height: 35px;
+}
+.types .radio > div{
+    display: flex;    
+    justify-content: flex-start;
+    align-items: center;
+}
+.types .radio > div *{
+    cursor: pointer;
+}
+.types .radio.all-types{
+    background-color: #B3D6FD;
+    color: #001B3B;
+    width: fit-content;
+    padding: 0.5em 1em;
+}
+.types .radio.all-types:hover{
+    background-color: #A8C8ED;
+}
+.types .radio input{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
+    margin-left: 0;
+}
+
+.types .radio .type-count{
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.types .radio:not(.all-types){
+    padding: 0 1em 0 0;
+}
+.types .radio:not(.all-types) .type-icon{
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    margin-right: 5px;
+}
+
+.types .radio.disabled{
+    background-color: #E6E6E6;
+}
+.types .radio.disabled *{
+    color: #999;
+    cursor: unset;
+}
+
+.types .radio.disabled img{
+    filter: saturate(0);
+    opacity: 0.5;
+}
+#mapFilter > div:first-child{
+    display: flex;
+    justify-content: space-between;
+}
+#mapFilter > div:first-child > *{
+    margin: 15px 0;
+}
+#mapFilter h3{
+    margin-top: 1.5em;
+}
+/* Loader */
+.loader {
+    background: url(/ui/plug-in/integration/carte-instrument-musee/img/loader.gif), #fff;
+    background-repeat: no-repeat;
+    background-position: 50%, 50%;
+    width:100%;
+    height:100%;
+    position:absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display:none;
+    border-radius: 16px;
+    opacity: 0.8;
+}
+/* Map */
+#mapMusee {
+    display: block;
+    width: 72%;
+    height: 80vh;
+    max-width: 1050px;
+    max-height: 650px;
+    margin: 0 0 0 3%;
+    overflow: hidden;
+    padding: 1em;
+    border-radius: 16px;
+}
+#mapMusee .leaflet-popup-tip {
+    display: none;
+}
+.leaflet-container a{
+    color: #001B3B;
+}
+.leaflet-popup-content-wrapper {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 25px;
+}
+
+.leaflet-popup-content {
+    padding: 0.5em 0.5em;
+    margin: 0;
+    text-align: center;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: bold;
+}
+
+#mapMusee .leaflet-tile-pane{
+    filter: saturate(0);
+}
+
+#mapMusee .leaflet-popup-content-wrapper{
+    background-color: transparent;
+    box-shadow: unset;
+}
+#mapMusee .continent-marker:not(.neighbor),
+#mapMusee .city-marker,
+#mapMusee .city-center,
+#mapMusee .continent-popup{
+    padding: 1em;
+    border-radius: 16px;
+    background-color: #B3D6FD;
+    box-shadow: 0px 5px 10px -3px rgba(0,0,0,0.2);
+    cursor: pointer;
+
+}
+#mapMusee .continent-marker:not(.neighbor){
+    width: 30px !important;
+    height: 30px !important;
+}
+#mapMusee .continent-popup p,
+#mapMusee .leaflet-popup h4{
+    margin: 0;
+}
+#mapMusee .city-container p{
+    margin: 0;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    white-space: nowrap;
+}
+#mapMusee .city-container p:first-child{
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: bold;
+}
+#mapMusee .city-container{
+    width: fit-content !important;
+    height: fit-content !important;
+    background-color: transparent;
+    border: none;
+}
+#mapMusee .marker-cluster-small,
+#mapMusee .marker-cluster-medium,
+#mapMusee .marker-cluster-large{
+    background-color: rgba(179,214,253,0.8);
+}
+#mapMusee .marker-cluster-small div,
+#mapMusee .marker-cluster-medium div,
+#mapMusee .marker-cluster-large div{
+    background-color: rgba(179,214,253,1);
+}
+#mapMusee .popup-container .city-container,
+#mapMusee .city-container .city-marker,
+#mapMusee .city-container .country-marker{
+    padding: 1em;
+    border-radius: 20px;
+    background-color: #001B3B;
+    color: #fff;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* aspect-ratio : 1 / 1; */
+    min-width: 15px;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-40%);
+    margin: 0;
+}
+#mapMusee .city-container .city-marker p {
+    color: #fff;
+}
+#mapMusee .popup-container{
+    width: 500vw;
+    height: 500vh;
+    background-color: rgba(255,255,255,0.7);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: None;
+}
+#mapMusee .popup-container > *:not(#cartel-container){
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    pointer-events: all;
+}
+#mapMusee .country-marker{
+    margin: 0 auto;
+    width: fit-content;
+    text-align: center;
+    position: absolute;
+    display: block;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    top: 50%;
+    font-size: 1em;
+}
+#mapMusee .country-marker.unknown,
+#mapMusee .city-container .city-marker.unknown{
+    aspect-ratio : 1 / 1;
+    color: #001B3B;
+    background-color: rgba(179,214,253,0.6);
+    border-radius: 50%;
+    transform: none;
+    bottom: unset;
+    left: unset;
+}
+#mapMusee .country-marker.unknown{
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#mapMusee .country-marker.unknown p{
+    margin: 0;
+}
+
+#mapMusee .city-container .city-marker.unknown p{
+    color: #001B3B;
+}
+#mapMusee .city-container .city-marker.unknown p:first-child{
+    font-size: 1.1em;
+}
+
+#mapMusee .city-container .city-marker.unknown:hover{
+    background-color: rgba(179,214,253,0.8);
+
+}
+
+#mapMusee .neighbor-marker {
+    display: flex;
+    flex-direction: row;
+    width: fit-content !important;
+    height: fit-content !important;
+    background-color: #fff;
+    border:2px solid #001B3B;
+    padding: 5px;
+    border-radius: 16px;
+}
+#mapMusee .neighbor-marker:hover {
+    padding: 5px 10px 5px 5px;
+}
+#mapMusee .neighbor-marker img{
+    width: 20px;
+    margin-right: 0;
+}
+#mapMusee .neighbor-marker h3{
+    margin: 0;
+    font-style: italic;
+    font-weight: 300;
+    white-space: nowrap;  
+    font-size: 0.9em;  
+    display: none;
+}
+#mapMusee .neighbor-marker p{
+    display: none;
+    margin: 0;
+    font-size: 1.2em;
+}
+#mapMusee .neighbor-marker h3 span{
+    margin: 0;
+    font-style: normal;
+    font-size: 1.3em;
+}
+#mapMusee .neighbor-marker.hovered h3,
+#mapMusee .neighbor-marker:hover h3,
+#mapMusee .neighbor-marker.hovered p,
+#mapMusee .neighbor-marker:hover p{
+    display: block;
+}
+#mapMusee .neighbor-marker.hovered img,
+#mapMusee .neighbor-marker:hover img{
+    margin-right: 10px;
+}
+
+#mapMusee .city-container .city-marker{
+    flex-direction: column;
+}
+
+/* Catégories */
+#mapMusee .cat_button,
+#mapMusee .city-center{
+    border: unset;
+    border-radius: 16px;
+    width: fit-content;
+    padding: 0 1em;
+    margin: 0.5em;
+  
+}
+#mapMusee .city-center{
+    padding: 0.5em;
+}
+#mapMusee .city-center p{
+    margin: 0 auto;
+}
+#mapMusee .cat_button p{
+    display: flex;
+    margin: 0;
+    align-items: center;
+    justify-content: space-between;
+}
+#mapMusee .cat_button p::after{
+    width: 25px;
+    height: auto;
+    display: block;
+    position: relative;
+}
+#mapMusee .instrument_de_musique{
+    background-color: #DBB7C1;
+}
+#mapMusee .autre{
+    background-color: #6DA7C0;
+}
+#mapMusee .oeuvre_d_art{
+    background-color: #A9BED8;
+}
+#mapMusee .document_ecrit{
+    background-color: #B3D6FD;
+}
+#mapMusee .accessoire{
+    background-color: #90D4D8;
+}
+#mapMusee .outil{
+    background-color: #FEE8BE;
+}
+#mapMusee .element_d_instrument_de_musique{
+    background-color: #EFC3FF;
+}
+#mapMusee .cat_button.instrument_de_musique p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/instrument_de_musique.svg)
+}
+#mapMusee .cat_button.autre p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/autre.svg)
+}
+#mapMusee .cat_button.oeuvre_d_art p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/oeuvre_d_art.svg)
+}
+#mapMusee .cat_button.document_ecrit p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/document_ecrit.svg)
+}
+#mapMusee .cat_button.accessoire p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/accessoire.svg)
+}
+#mapMusee .cat_button.outil p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/outil.svg)
+}
+#mapMusee .cat_button.element_d_instrument_de_musique p::after{
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/element_d_instrument_de_musique.svg)
+}
+#mapMusee .leaflet-popup-close-button{
+    display: none;
+}
+#mapMusee #close-slider{
+    bottom: 20vh;
+    top: unset;
+    left: 17vw;
+    background-color: #fff;
+    border-radius: 50%;
+    padding: 0.3em;
+    border: 1px solid rgb(179,214,253);;
+    color: #000;
+    font-size: 1.5em;
+    width: 30px;
+    height: 30px;
+    transform: translate(15vw, -23vh);
+    font-size: 1em;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+}
+
+#mapMusee #close-slider:hover{
+    border: 1px solid #001B3B;
+}
+
+#mapMusee #tooltip{
+    z-index: 10000;
+    position: absolute;
+    background-color: #fff;
+    padding: 0.5em 0.5em;
+    border-radius: 16px;
+    border: 1px solid #B3D6FD;
+    font-size: 1em;
+}
+
+/* Audio Button */
+
+#mapMusee .audio-player button {
+    text-transform: capitalize;
+}
+
+#mapMusee .audio-player button::before {
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/picto-play.svg);
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    position: relative;
+    top: 3px;
+    right: 5px;
+}
+
+#mapMusee .audio-player button.isPlaying:hover::before,
+#mapMusee .audio-player button.isPlaying::before {
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/picto-pause.svg);
+}
+
+#mapMusee .audio-player button:hover::before {
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/picto-play-outline.svg);
+}
+
+/* Cartel */
+#cartel-container{
+    width: 30vw;
+    height: fit-content;
+    min-width: 200px;
+    min-height: 350px;
+    max-width: 500px;
+    max-height: 650px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: all;
+    padding: 0 20px;
+}
+#cartel-container .incontournable{
+    position: absolute;
+    top: 0;
+    z-index: 10001;
+    padding: 0.5em 1em;
+    background-color: #001B3B;
+    color: #fff;
+    margin: 0;
+    border-radius: 16px 0;
+}
+#cartel-container .crop-image{
+    width: 100%;
+    height: 20vh;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px 16px 0 0;
+}
+#cartel-container .crop-image img.blur{
+    min-width: 100%;
+    min-height: 100%;
+    filter: blur(10px);
+    max-width: unset;
+    max-height: unset;
+}
+#cartel-container .crop-image img{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+#cartel-container .notice-slide{
+    background-color: #fff;
+    border-radius: 16px;
+}
+#cartel-container .slick-track{
+    display: flex;
+    overflow: hidden;
+}
+#cartel-container .slick-list, 
+#cartel-container .slick-track, 
+#cartel-container .slick-slide,
+#cartel-container .notice-slide,
+#cartel-container .slick-slide > div{
+    height: 100%;
+}
+
+#cartel-container .cartel-textes{
+    padding: 1em;
+}
+#cartel-container .cartel-textes *{
+    text-align: left;
+}
+#cartel-container .cartel-textes div{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+#cartel-container .cartel-textes div.notice-hierarchy{
+    justify-content: flex-start;
+}
+#cartel-container .cartel-textes .author::before{
+    content: "";
+    display: block;
+    width: 30%;
+    height: 2px;
+    background-color: #001B3B;
+    margin-bottom: 10px;
+}
+#cartel-container .cartel-textes .title-container{
+    justify-content: flex-start;
+}
+#cartel-container .cartel-textes .type-icon{
+    width: 20px;
+    margin-right: 10px;
+    align-self: flex-start;
+        margin-top: 3px;
+}
+#cartel-container .cartel-textes .notice-title{
+    margin: 0;
+    font-size: 1.5em;
+}
+#cartel-container .cartel-textes .author,
+#cartel-container .cartel-textes .notice-title{
+    text-transform: uppercase;
+    text-align: left;
+}
+#mapMusee .text-btn{
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: normal;
+    background-color: transparent;
+    border: none;
+    margin: 0.5em 3px 1em 0;
+    padding: 0;
+}
+#mapMusee .text-btn:hover{
+    color: #6DA7C0;
+}
+#mapMusee .text-btn:not(:last-child)::after{
+    content: " | ";
+    margin-left: 3px;
+}
+/* .btn.btn-default{
+    padding: 0.5em 1em;
+    border-radius: 16px;
+    background-color: #B3D6FD;
+    color: #001B3B;
+    text-decoration: none;
+    font-size: 13px;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    font-weight: bold;
+    border: none;
+    margin-bottom: 0.5em;
+}
+.btn.btn-default:hover{
+    background-color: #A8C8ED;
+} */
+.btn.btn-default{
+    margin-bottom: 1em;
+    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+}
+#button-field{
+    margin-top: 1em;
+}
+#mapMusee .btn.btn-link::after{
+    content: url("/ui/plug-in/integration/carte-instrument-musee/img/link.svg");
+    width: 20px;
+    height: auto;
+    display: inline-block;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+#mapMusee .custom-prev-button {
+    order: 1;
+    right: 100%;
+}
+
+#mapMusee .custom-next-button {
+    order: 3;
+    margin-right: 0.5em;
+    left: 100%;
+}
+
+#mapMusee .slick-arrow {
+    background-color: #fff;
+    border: 2px solid  #B3D6FD;
+    padding: 10px 12px;
+    border-radius: 20px;
+    position: absolute;
+    z-index: 10000;
+    top: 50%;
+}
+
+
+#mapMusee .slick-arrow:hover {
+    border: 2px solid  #001B3B;
+}
+
+#mapMusee .chevron-right,
+#mapMusee .chevron-left {
+    content: url(/ui/plug-in/integration/carte-instrument-musee/img/chevron.svg);
+    width: 10px;
+    max-width: unset;
+}
+
+#mapMusee .chevron-left {
+    transform: rotate(180deg);
+}
+
+
+/* Tableau accessibilite */
+
+#access-modal {
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    position: fixed;
+    z-index: 1001;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+#access-modal table {
+    background-color: #fff;
+    width: 90%;
+    height: 75vh;
+    overflow-y: scroll;
+    display: block;
+    margin: 8% 5%;
+    border-radius: 16px;
+}
+
+#access-modal caption {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 0.5em;
+}
+
+#access-modal th {
+    background-color: transparent;
+}
+
+#access-modal td {
+    width: calc(100%/6);
+}
+
+#access-modal .close {
+    position: fixed;
+    bottom: 50px;
+    right: 5%;
+    opacity: 1;
+}
