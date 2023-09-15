@@ -9,23 +9,7 @@
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
-body{
-    background-color: #E6E6E6;
-    margin: 1vw 5vw;
-}
-/* Map Container */
-#mapMuseeContainer > div{
-    display: flex;
-    justify-content: space-between;
-    position: relative;
-}
 
-#mapFilter{
-    width: 25%;
-    background-color: #fff;
-    border-radius: 16px;
-    padding: 1em;
-} 
 h2, h3{
     text-transform: uppercase;
 }
@@ -48,7 +32,15 @@ p,label,li,option, button, select, input{
 i{
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
     font-style: italic;
-}   
+}  
+.reload-error{
+    position: absolute;
+    top: 70%;
+    left: 50%;
+    text-align: center;
+    margin: auto;
+    transform: translate(-50%, -50%);
+} 
 /* Filters */
 fieldset{
     border: none;
@@ -226,17 +218,76 @@ fieldset{
     border-radius: 16px;
     opacity: 0.8;
 }
+/* Map Container */
+#mapMuseeContainer > div{
+    /* display: flex;
+    justify-content: space-between; */
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 80vh;
+    max-height: 650px;
+}
+
+#mapFilter{
+    width: 300px;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 1em;
+    position:absolute;
+    max-height: 650px;
+    z-index: 10000;
+    overflow-y: scroll;
+    left: -300px;
+    transition: 0.2s ease-in-out left
+} 
+#open-close-filter{
+    position: absolute;
+    left: 0px;
+    z-index: 10001;
+    bottom: 20px;
+    background-color: #fff;
+    border: none;
+    border-radius: 0 16px 16px 0;
+    padding: 0.5em 1em 0.5em 0.5em;
+    transition: 0.2s ease-in-out left
+}
+#mapFilter.open{
+    left: 0px;
+    transition: 0.2s ease-in-out left
+}
+#open-close-filter.open{
+    left: 300px;
+    transition: 0.2s ease-in-out left
+}
+#mapMusee.open{
+    width: calc(100% - 300px);
+    transform: translateX(300px);
+    transition: width 0.2s ease-in-out,  transform 0.2s ease-in-out;
+}
+#open-close-filter img{
+    width: 20px;
+    margin: auto;
+}
+#open-close-filter p{
+    font-size: 0.7em;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0;
+}
 /* Map */
 #mapMusee {
     display: block;
-    width: 72%;
+    width: 100%;
     height: 80vh;
-    max-width: 1050px;
+    /* max-width: 1050px; */
     max-height: 650px;
-    margin: 0 0 0 3%;
-    overflow: hidden;
+    /* margin: 0 0 0 3%; */ 
+   overflow: hidden;
     padding: 1em;
     border-radius: 16px;
+    transition: width 0.2s ease-in-out,  transform 0.2s ease-in-out;
+
 }
 #mapMusee .leaflet-popup-tip {
     display: none;
@@ -710,11 +761,14 @@ fieldset{
 .btn.btn-default{
     margin-bottom: 1em;
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
+    padding: 0.25rem 1rem;
+    font-size: 0.8em;
 }
 #button-field{
     margin-top: 1em;
 }
-#mapMusee .btn.btn-link::after{
+#mapFilter .btn-link::after,
+#mapMusee .btn-link::after{
     content: url("/ui/plug-in/integration/carte-instrument-musee/img/link.svg");
     width: 20px;
     height: auto;

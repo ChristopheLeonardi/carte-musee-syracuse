@@ -1,17 +1,46 @@
 /* Lien github : https://github.com/ChristopheLeonardi/carte-musee-syracuse */
 
-$(document).ready(function() {
+// Chargement des données
+var promises = []
+function wait_for_data(promises) {
+    get_data(promises)
+    typeof window["data"] !== "undefined" ? mapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
+}
 
-  $(".loader").show()
-  var promises = []
-  function wait_for_data(promises) {
-      get_data(promises)
-      typeof window["data"] !== "undefined" ? mapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
+// Vérification que tous les modules sont chargés
+function isLibrariesLoaded() {
+  return typeof L !== 'undefined' 
+      && typeof L.map === 'function'
+      && typeof L.markerClusterGroup === 'function'
+}
+function onLibrariesLoaded(attempt_count) {
+  if (isLibrariesLoaded()) {
+    wait_for_data(promises)
+  } else {
+
+    if (attempt_count >= 4) { 
+      let message = document.createElement("p")
+      message.setAttribute("class", "reload-error")
+      message.textContent = "Nous rencontrons un problème, la page va être rechargée."
+      document.getElementById("mapMuseeContainer").appendChild(message)
+      setTimeout(function () {
+        location.reload() 
+      }, 1500); 
+    }
+    setTimeout(function () {
+      console.log('Tentative de rechargement de Leaflet...');
+      onLibrariesLoaded(attempt_count + 1);
+    }, 1000);
   }
-  wait_for_data(promises)
-  
+} 
+$(document).ready(function() {
+  $(".loader").show()
 
+  var attempt_count = 0
+  onLibrariesLoaded(attempt_count);
 })
+
+
 function get_data(promises) {
   const controller = new AbortController();
   try {
@@ -47,7 +76,7 @@ function mapMusee(data){
   /* Initialize Map */
   const map = L.map('mapMusee', { 
       scrollWheelZoom: true, 
-      maxBoundsViscosity: 0.9,
+      maxBoundsViscosity: 0.8,
       minZoom :  1.5,
       maxZoom: 12,
   }).setView(window.initial_view.latlng, window.initial_view.zoom);
@@ -55,7 +84,7 @@ function mapMusee(data){
   window["map"] = map
   map.setMaxBounds([ [-65, -25], [85, 330] ])
 
-  L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map)
 
@@ -100,6 +129,16 @@ function mapMusee(data){
   $(".loader").hide();
 
   filtersActions()
+
+  // Ouvrir et fermer le menu des filtres
+  $("#open-close-filter").click(e => {
+    $("#mapFilter, #open-close-filter, #mapMusee").toggleClass("open")
+    onkeyup = e => {
+      if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
+        $("#mapFilter, #open-close-filter").removeClass("open")
+      }
+    };
+  })
 }
 
 const createContinentMarkers = c_data => {
@@ -195,6 +234,7 @@ const createDataObject = instruments_data => {
 
       c_data.count_by_type[item["Type d'objet"]] += 1      
   })
+  console.log(c_data)
   return c_data
 }
 
@@ -1045,6 +1085,14 @@ const createCartel = (e, notices) => {
 
   createCloseButton()
 
+  // Ajout comportement fermeture lors de l'appuie sur la touche esc
+  onkeyup = e => {
+    if (e.keyCode == 27){
+      $("#close-slider").click()
+    }
+  };
+
+
 
 }
 const createCloseButton = () => {
@@ -1475,7 +1523,7 @@ const populateObjectTypes = data => {
           radio_buttons[index].classList.remove("checked") 
           radio_buttons[index].removeAttribute("style")
       })
-      
+
       e.target.setAttribute("checked", "true")
 
       $(this).addClass("checked")
