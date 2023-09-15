@@ -6,41 +6,6 @@ function wait_for_data(promises) {
     get_data(promises)
     typeof window["data"] !== "undefined" ? mapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
 }
-
-// Vérification que tous les modules sont chargés
-function isLibrariesLoaded() {
-  return typeof L !== 'undefined' 
-      && typeof L.map === 'function'
-      && typeof L.markerClusterGroup === 'function'
-}
-function onLibrariesLoaded(attempt_count) {
-  if (isLibrariesLoaded()) {
-    wait_for_data(promises)
-  } else {
-
-    if (attempt_count >= 4) { 
-      let message = document.createElement("p")
-      message.setAttribute("class", "reload-error")
-      message.textContent = "Nous rencontrons un problème, la page va être rechargée."
-      document.getElementById("mapMuseeContainer").appendChild(message)
-      setTimeout(function () {
-        location.reload() 
-      }, 1500); 
-    }
-    setTimeout(function () {
-      console.log('Tentative de rechargement de Leaflet...');
-      onLibrariesLoaded(attempt_count + 1);
-    }, 1000);
-  }
-} 
-$(document).ready(function() {
-  $(".loader").show()
-
-  var attempt_count = 0
-  onLibrariesLoaded(attempt_count);
-})
-
-
 function get_data(promises) {
   const controller = new AbortController();
   try {
@@ -61,13 +26,48 @@ function get_data(promises) {
   }
 }
 
+// Vérification que tous les modules sont chargés
+function isLibrariesLoaded() {
+  return typeof L !== 'undefined' 
+      && typeof L.map === 'function'
+      && typeof L.markerClusterGroup === 'function'
+}
+function onLibrariesLoaded(attempt_count) {
+  if (isLibrariesLoaded()) {
+    wait_for_data(promises)
+  } else {
+    // Rechargement de la page après 4 tentatives avec message d'erreur
+    if (attempt_count >= 4) { 
+      let message = document.createElement("p")
+      message.setAttribute("class", "reload-error")
+      message.textContent = "Nous rencontrons un problème, la page va être rechargée."
+      document.getElementById("mapMuseeContainer").appendChild(message)
+      setTimeout(function () {
+        location.reload() 
+      }, 1500); 
+    }
+
+    setTimeout(function () {
+      console.log('Tentative de rechargement de Leaflet...');
+      onLibrariesLoaded(attempt_count + 1);
+    }, 1000);
+  }
+} 
+
+$(document).ready(function() {
+  $(".loader").show()
+
+  var attempt_count = 0
+  onLibrariesLoaded(attempt_count);
+})
+
 function mapMusee(data){
   console.log(data)
 
   const instruments_data = data[0]
   let countries_data = [{ "data" : data[1], "name" : "amerique" },{ "data" : data[2], "name" : "reste" }]
 
-  window["initial_view"] = { latlng : [20, 155], zoom : 1.25 } // Default map view setting
+  window["initial_view"] = { latlng : [20, 155], zoom : 2 } // Default map view setting
 
   window["continent_infos"]  = data[3].continents_infos
   window["object_type"] = data[3].object_type
@@ -75,14 +75,19 @@ function mapMusee(data){
 
   /* Initialize Map */
   const map = L.map('mapMusee', { 
+      fullscreenControl: true,
+      fullscreenControlOptions: {
+        position: 'topleft'
+      },
+      //worldCopyJump: true,
       scrollWheelZoom: true, 
-      maxBoundsViscosity: 0.8,
+      //maxBoundsViscosity: 0.8,
       minZoom :  1.5,
       maxZoom: 12,
   }).setView(window.initial_view.latlng, window.initial_view.zoom);
 
   window["map"] = map
-  map.setMaxBounds([ [-65, -25], [85, 330] ])
+  //map.setMaxBounds([ [-65, -180], [180, 360] ])
 
   L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -724,9 +729,9 @@ const createCitiesMarkers = layer => {
 
   }
   
-  // Ajouter d'abord le groupe de marqueurs inconnus, puis le groupe de marqueurs connus
   map.addLayer(markers);
   window["clusters_cities_cluster"] = markers 
+  window["solo_city_cluster"] = markers_to_add 
 
   // Sauvegarder la référence du groupe de marqueurs unknown_markers dans la variable globale clusters_cities_markers
   window["clusters_cities_markers"] = unknown_marker;
@@ -742,6 +747,7 @@ const defineIcon = (url) => {
 }
 
 const createMarkerPopup = notices => {
+
   var container = document.createElement("div")
   container.setAttribute("class", "popup-container")
 
@@ -754,7 +760,7 @@ const createMarkerPopup = notices => {
   cats.map(cat => {
 
     // Ajout de close s'il n'y a q'une seule catégorie
-    var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : -50
+    var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0  
     var pos_y = 0 + rayon / 1.5 * Math.sin(angle)
     angle += angle_unit
 
@@ -767,7 +773,7 @@ const createMarkerPopup = notices => {
 
     $(button_cat).on("click", function(e){
       createCartel(e, cat_notices)
-      $(".popup-container")[0].setAttribute("style","pointer-events: all;")
+      //$(".popup-container")[0].setAttribute("style","pointer-events: all;")
     })
   
     let item_number = document.createElement("p")
@@ -792,7 +798,7 @@ const createMarkerPopup = notices => {
   city_container.appendChild(total_number)
   $(city_container).on("click", function(e){
     createCartel(e, notices)  
-    $(".popup-container")[0].setAttribute("style","pointer-events: all;")
+    //$(".popup-container")[0].setAttribute("style","pointer-events: all;")
   })
 
   container.appendChild(city_container)
@@ -871,6 +877,12 @@ const resetclusters = () => {
 
   if (window.clusters_cities_cluster != undefined) {
     map.removeLayer(window.clusters_cities_cluster)
+  }
+
+  if (window.solo_city_cluster != undefined) {
+    window.solo_city_cluster.map(marker => {
+      map.removeLayer(marker)
+    })  
   }
 
   if (window.countries_cluster != undefined) {
@@ -1107,7 +1119,7 @@ const createCloseButton = () => {
   $(button).on("click", function(e) {
       $('.single-item').remove()
       $("#close-slider").toggle()
-      $(".popup-container")[0].setAttribute("style","pointer-events: none;")
+      //$(".popup-container")[0].setAttribute("style","pointer-events: none;")
   })
 
   $(".popup-container")[0].appendChild(button)

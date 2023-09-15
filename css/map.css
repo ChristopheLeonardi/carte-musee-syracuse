@@ -244,7 +244,7 @@ fieldset{
 #open-close-filter{
     position: absolute;
     left: 0px;
-    z-index: 10001;
+    z-index: 100001;
     bottom: 20px;
     background-color: #fff;
     border: none;
