@@ -6,23 +6,67 @@ function wait_for_data(promises) {
     get_data(promises)
     typeof window["data"] !== "undefined" ? mapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
 }
+
 function get_data(promises) {
   const controller = new AbortController();
   try {
-      if (promises == undefined) { var promises = [] }
-      promises.push((d3.csv("/ui/plug-in/integration/carte-instrument-musee/data/data-carte-collections_2023-07-20.csv")))
-      promises.push((d3.json("/ui/plug-in/integration/carte-instrument-musee/data/amerique.json")))
-      promises.push((d3.json("/ui/plug-in/integration/carte-instrument-musee/data/reste.json")))
-      promises.push((d3.json("/ui/plug-in/integration/carte-instrument-musee/data/config.json")))
+    if (promises == undefined) { var promises = [] }
 
-      setTimeout(() => controller.abort(), 1000);
-      Promise.all(promises, {signal: controller.signal})
-              .then(data => {
-                  window["data"] = data
-              })
-  }
-  catch(err){
-      console.log(err)
+    // Mettez à jour l'URL du fichier CSV compressé au format gzip
+    promises.push(
+      fetch('/ui/plug-in/integration/carte-instrument-musee/data/data-carte-collections_2023-07-20.csv.gz')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Erreur HTTP : ${response.status}`);
+          }
+          return response.arrayBuffer(); // Utilisez arrayBuffer pour récupérer les données brutes
+        })
+        .then(arrayBuffer => {
+          // Décompressez le contenu avec pako
+          const inflatedData = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+
+          // Parsez le contenu décompressé en CSV avec d3
+          return d3.csvParse(inflatedData);
+        })
+    );
+
+    // Liste des URL des fichiers JSON gzip
+    const jsonUrls = [
+      '/ui/plug-in/integration/carte-instrument-musee/data/amerique.json.gz',
+      '/ui/plug-in/integration/carte-instrument-musee/data/reste.json.gz',
+      '/ui/plug-in/integration/carte-instrument-musee/data/config.json.gz',
+    ];
+
+    // Utilisez une boucle pour charger et décompresser les fichiers JSON
+    for (const url of jsonUrls) {
+      promises.push(
+        fetch(url)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Erreur HTTP : ${response.status}`);
+            }
+            return response.arrayBuffer(); // Utilisez arrayBuffer pour récupérer les données brutes
+          })
+          .then(arrayBuffer => {
+            // Décompressez le contenu avec pako
+            const inflatedData = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+
+            // Parsez le contenu décompressé en tant qu'objet JSON
+            return JSON.parse(inflatedData);
+          })
+      );
+    }
+
+    setTimeout(() => controller.abort(), 1000);
+    Promise.all(promises, { signal: controller.signal })
+      .then(data => {
+        window["data"] = data;
+      })
+      .catch(error => {
+        console.error('Erreur lors du chargement des fichiers gzip :', error);
+      });
+  } catch (err) {
+    console.log(err);
   }
 }
 
@@ -760,7 +804,7 @@ const createMarkerPopup = notices => {
   cats.map(cat => {
 
     // Ajout de close s'il n'y a q'une seule catégorie
-    var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0  
+    var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0   
     var pos_y = 0 + rayon / 1.5 * Math.sin(angle)
     angle += angle_unit
 
@@ -974,7 +1018,7 @@ const createCartel = (e, notices) => {
 
       let title = document.createElement("h3")
           title.setAttribute("class", "notice-title")
-          title.textContent = notice["Titre"]
+          title.textContent = notice["Titre"].length > 30 ? notice["Titre"].substring(0, 30) + "..." : notice["Titre"]
           title_section.appendChild(title)
 
       let details_section = document.createElement("div")

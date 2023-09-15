@@ -570,7 +570,7 @@ fieldset{
 #mapMusee #close-slider{
     bottom: 20vh;
     top: unset;
-    left: 17vw;
+    left: calc(50% + 20px) !important;
     background-color: #fff;
     border-radius: 50%;
     padding: 0.3em;
@@ -627,7 +627,7 @@ fieldset{
 #cartel-container{
     width: 30vw;
     height: fit-content;
-    min-width: 200px;
+    min-width: 300px;
     min-height: 350px;
     max-width: 500px;
     max-height: 650px;
