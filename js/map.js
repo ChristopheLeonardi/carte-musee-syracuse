@@ -93,7 +93,7 @@ function onLibrariesLoaded(attempt_count) {
     }
 
     setTimeout(function () {
-      console.log('Tentative de rechargement de Leaflet...');
+      console.log('Tentative de chargement de Leaflet...');
       onLibrariesLoaded(attempt_count + 1);
     }, 1000);
   }
@@ -366,7 +366,7 @@ const hoverCountryEffect = (e, opacity) => {
   // Get name depending on DOM element
   var continent_name = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent")
   let svg_countries = []
-
+  console.log(e)
   if (e.layerID){
     var path = `path.${e.layerID.toLowerCase()}`
     if($(path).length == 0 ) { return }
@@ -442,7 +442,6 @@ const createMarkersNeighbors = (neighbor, bounds=false) => {
 }
 /* Marqueurs des Pays */
 const createMarkersCountry = (continent_obj, bounds=false) => {
-
   // Harmonize data
   var countries_to_display = continent_obj.notices
   countries_to_display =[... Object.keys(countries_to_display).map(key => {return {"code":key, "obj":countries_to_display[key]}})]
@@ -643,17 +642,23 @@ const onEachTopojson = (features, layer) => {
 
       createMarkersNeighbors(neighbor_list, e.target._bounds)
       createCitiesMarkers(e.target)
-    } 
+
+      var path = `path.${layer.layerID.toLowerCase()}`
+      if($(path).length == 0 ) { return }
+      console.log($(path))
+      $("path.selected").removeClass("selected")
+      $(path).toggleClass("selected")
+     } 
   })
   layer.on( "mouseover", e => { 
 
     // Vérifie la présence d'instrument dans le pays
     if(!window["c_data"].pays.includes(layer.layerID)){ return }
-
+    createTooltipName(e) 
+    console.log(layer)
     if(layer.has_markers == true) { return }
     $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
     $(e.target._path).css({ opacity: 0.6, fillOpacity: 0.6 })
-    createTooltipName(e) 
   })
 
   layer.on( "mouseout", e => { 
@@ -664,8 +669,17 @@ const onEachTopojson = (features, layer) => {
 }
 
 const createTooltipName = e => {
+
+  // Create an array of all the neighbors id
+  var neighbor_id = []
+  Object.keys(window.country_markers._layers).map( leaflet_id => {
+    neighbor_id.push($(window.country_markers._layers[leaflet_id].options.icon.options.html).attr("id"))
+  })
+
   $("#tooltip").remove()
-  if(map.getZoom() >= 4) { return }
+  
+  if(neighbor_id.includes(e.target.feature.properties.ISO_A2_EH)){ return }
+
   var name_fr = e.target.feature.properties.NAME_FR
   var name_natve = e.target.feature.properties.name_native
   
@@ -917,6 +931,9 @@ const resetMarkers = () => {
 }
 const resetclusters = () => {
 
+  // Remove selected country
+  $("path.selected").removeClass("selected")
+
   const layersToRemove = [
     window.clusters_cities_cluster,
     window.solo_city_cluster, 
@@ -1091,7 +1108,9 @@ const createCartel = (e, notices) => {
 
       let lieu_creation = document.createElement("p")
       lieu_creation.setAttribute("class", "lieu-creation")
-      lieu_creation.textContent = "Lieu de création : " + (notice["Ville"] != "" ? notice["Ville"] + ", " : "") + notice["Pays"]
+      lieu_creation.textContent = "Lieu de création : " + (notice["Ville"] != "" ? notice["Ville"] + ", " : "") 
+                                                        + (notice["Pays"] != "" ? notice["Pays"] + ", " : "")
+                                                        + (notice["Continent"] != "" ? notice["Continent"] : "")
       text_section.appendChild(lieu_creation)
 
       if (notice["Date"]){
@@ -1541,7 +1560,6 @@ const selectizeOptionDOM = (item, escape) => {
 
 const populateObjectTypes = data => {
   var types = window["object_type"]
-  console.log(types)
   var parent = document.getElementById("types-filter")
 
   $(`#types-filter .radio`).remove();

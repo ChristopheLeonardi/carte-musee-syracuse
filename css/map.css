@@ -752,21 +752,10 @@ fieldset{
     content: " | ";
     margin-left: 3px;
 }
-/* .btn.btn-default{
-    padding: 0.5em 1em;
-    border-radius: 16px;
-    background-color: #B3D6FD;
-    color: #001B3B;
-    text-decoration: none;
-    font-size: 13px;
-    font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
-    font-weight: bold;
-    border: none;
-    margin-bottom: 0.5em;
+#mapMusee path.selected{
+    fill-opacity: 0.6 !important;
+    opacity: 0.6 !important;
 }
-.btn.btn-default:hover{
-    background-color: #A8C8ED;
-} */
 .btn.btn-default{
     margin-bottom: 1em;
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
