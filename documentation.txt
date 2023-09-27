@@ -1,0 +1,39 @@
+Here is some documentation for the main functions and logic in map.js:
+
+isLibrariesLoaded()
+Checks that required libraries are loaded globally before initializing the map. Looks for:
+
+L - Leaflet
+L.map - Leaflet Map
+L.markerClusterGroup - Leaflet MarkerCluster plugin
+pako - For gzip decompression
+Returns true if all libraries are loaded.
+
+onLibrariesLoaded(attemptCount)
+Retries initializing map if libraries not loaded yet.
+
+Calls isLibrariesLoaded() to check if ready
+If not ready, waits 1 second and retries (up to 4 attempts)
+On final attempt, shows error and reloads page
+When ready, calls wait_for_data()
+wait_for_data(promises)
+Waits for data files to load before rendering map.
+
+Calls get_data to fetch gzipped data files
+Resolves array of Promises returned by get_data()
+Renders map when data is loaded into window.data
+get_data()
+Fetches and decompresses data files needed for map.
+
+Loads region data files (amerique.json.gz etc.)
+Loads CSVs for markers and clusters
+Decompresses files using pako
+Saves decompressed data to window.data
+mapMusee(data)
+Renders the map and markers once data is loaded.
+
+Access instruments_data from loaded data
+Create Leaflet map object
+Initialize clusters and layers
+Add markers using marker data
+Fit map bounds to markers

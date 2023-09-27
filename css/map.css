@@ -275,6 +275,13 @@ fieldset{
     text-align: center;
     margin: 0;
 }
+/* Reset Button */
+#reset-button{
+    z-index: 999;
+    position: absolute;
+    bottom: 20px;
+    right: 10px;
+}
 /* Map */
 #mapMusee {
     display: block;
@@ -567,10 +574,10 @@ fieldset{
 #mapMusee .leaflet-popup-close-button{
     display: none;
 }
-#mapMusee #close-slider{
+/* #mapMusee #close-slider{
     bottom: 20vh;
-    top: unset;
-    left: calc(50% + 20px) !important;
+    top: 0;
+    left: calc(100% - 10px) !important;
     background-color: #fff;
     border-radius: 50%;
     padding: 0.3em;
@@ -582,7 +589,8 @@ fieldset{
     transform: translate(15vw, -23vh);
     font-size: 1em;
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
-}
+    position: absolute;
+} */
 
 #mapMusee #close-slider:hover{
     border: 1px solid #001B3B;
@@ -728,6 +736,7 @@ fieldset{
     text-transform: uppercase;
     text-align: left;
 }
+#mapMusee .lieu-creation,
 #mapMusee .text-btn{
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
     font-weight: normal;
@@ -778,15 +787,16 @@ fieldset{
 }
 #mapMusee .custom-prev-button {
     order: 1;
-    right: 100%;
+    right: calc(100% - 10px);
 }
-
+#mapMusee #close-slider,
 #mapMusee .custom-next-button {
     order: 3;
     margin-right: 0.5em;
-    left: 100%;
+    left: calc(100% - 10px);
 }
 
+#mapMusee #close-slider,
 #mapMusee .slick-arrow {
     background-color: #fff;
     border: 2px solid  #B3D6FD;
@@ -796,7 +806,12 @@ fieldset{
     z-index: 10000;
     top: 50%;
 }
-
+#mapMusee #close-slider{
+    top: 0;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+}
 
 #mapMusee .slick-arrow:hover {
     border: 2px solid  #001B3B;
