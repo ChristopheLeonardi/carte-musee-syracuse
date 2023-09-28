@@ -57,7 +57,7 @@ function get_data(promises) {
       );
     }
 
-    setTimeout(() => controller.abort(), 3000);
+    setTimeout(() => controller.abort(), 2000);
     Promise.all(promises, { signal: controller.signal })
       .then(data => {
         window["data"] = data;
@@ -95,7 +95,7 @@ function onLibrariesLoaded(attempt_count) {
     setTimeout(function () {
       console.log('Tentative de chargement de Leaflet...');
       onLibrariesLoaded(attempt_count + 1);
-    }, 1000);
+    }, 2000);
   }
 } 
 
@@ -117,7 +117,8 @@ function mapMusee(data){
   window["continent_infos"]  = data[3].continents_infos
   window["object_type"] = data[3].object_type
   window["c_data"] = createDataObject(instruments_data) 
-
+  window["saved_initial_data"] = window.c_data
+  
   /* Initialize Map */
   const map = L.map('mapMusee', { 
       fullscreenControl: true,
@@ -139,7 +140,7 @@ function mapMusee(data){
   }).addTo(map)
 
   // Create markers for each continent
-  createContinentMarkers(c_data)
+  createContinentMarkers(window.saved_initial_data)
 
   /* Create Countries layers */
   window["countries_layers"] = []
@@ -172,8 +173,8 @@ function mapMusee(data){
 
 
   /* Filters */
-  createOptionsLocalisation(c_data)
-  populatefilters(c_data)
+  createOptionsLocalisation(window.saved_initial_data)
+  populatefilters(window.saved_initial_data)
 
 
   $(".loader").hide();
@@ -231,7 +232,6 @@ const createDataObject = (instruments_data) => {
     raw_data: instruments_data,
     convert_iso_name: {},
   };
-
   // Group instruments_data by Continent
   instruments_data.forEach((item) => {
     const continent = item.Continent || "unknown";
@@ -281,7 +281,6 @@ const createDataObject = (instruments_data) => {
       (c_data.count_by_type[item["Type d'objet"]] || 0) + 1;
   });
 
-  console.log(c_data);
   return c_data;
 };
 
@@ -374,7 +373,7 @@ const hoverCountryEffect = (e, opacity) => {
     svg_countries.push(Array.from(element))
   }
   else{
-    window["c_data"].pays.map(country => {
+    window.saved_initial_data.pays.map(country => {
       if (country === ""){ return }
 
       var path = `path.${continent_name.toLowerCase()}.${country.toLowerCase()}`
@@ -628,7 +627,7 @@ const onEachTopojson = (features, layer) => {
   layer.on({
     click: (e) => {
       // Vérifie la présence d'instrument dans le pays
-      if(!window["c_data"].pays.includes(layer.layerID)){ return }
+      if(!window.saved_initial_data.pays.includes(layer.layerID)){ return }
       if(L.markerClusterGroup == undefined) { return }
 
       if((map.getZoom() >= 4) && (layer.has_markers == true)) { return }
@@ -641,6 +640,7 @@ const onEachTopojson = (features, layer) => {
 
       createMarkersNeighbors(neighbor_list, e.target._bounds)
       createCitiesMarkers(e.target)
+      selectizeItem[0].selectize.setValue(layer.layerID)
 
       var path = `path.${layer.layerID.toLowerCase()}`
       if($(path).length == 0 ) { return }
@@ -651,7 +651,7 @@ const onEachTopojson = (features, layer) => {
   layer.on( "mouseover", e => { 
 
     // Vérifie la présence d'instrument dans le pays
-    if(!window["c_data"].pays.includes(layer.layerID)){ return }
+    if(!window.saved_initial_data.pays.includes(layer.layerID)){ return }
     createTooltipName(e) 
     if(layer.has_markers == true) { return }
     $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
@@ -696,12 +696,9 @@ const createCitiesMarkers = layer => {
   layer["has_markers"] = true;
 
   var cities = getNoticeData(layer);
-  // trigger modif filters
-  // populatefilters(c_data)
 
-  var filtered_data = c_data.raw_data.filter(notice => { return layer.feature.properties.ISO_A2_EH == notice["Code ISO-2"] })
-  createDataObject(filtered_data)
-  populatefilters(createDataObject(filtered_data))
+
+  
 
   var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
 
@@ -823,13 +820,13 @@ const createMarkerPopup = notices => {
     var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0   
     var pos_y = 0 + rayon / 1.5 * Math.sin(angle)
     angle += angle_unit
-
     var cat_notices = notices.filter(notice => { return  notice["Type d'objet"] == cat})
+    var cat_name_pluriel = window.object_type.filter(obj => { return obj.label == cat})[0].label_pluriel
 
     let button_cat = document.createElement("button")
     button_cat.setAttribute("class", `cat_button ${normalize_string(cat).replace("'", "_")}`)
     button_cat.setAttribute("style", `transform: translate(${pos_x}px, ${pos_y}px); transform-origin: 50% 50%;`)
-    button_cat.setAttribute("title", "Voir une sélection des éléments")
+    button_cat.setAttribute("title", `Voir une sélection des ${cat_name_pluriel}`)
 
     $(button_cat).on("click", function(e){
       createCartel(e, cat_notices)
@@ -874,7 +871,7 @@ const getNoticeData = layer => {
   })[0]
 
   // Get notices data for country by cities
-  var continent = window["c_data"].continents[continent_fr] 
+  var continent = window.saved_initial_data.continents[continent_fr] 
   return continent.notices[layer.layerID].cities
 }
 
@@ -905,9 +902,9 @@ const getNeighbor = country => {
 
       try{
         // Check if there's some notice
-        if (typeof window.c_data.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
+        if (typeof window.saved_initial_data.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
 
-        neighbor_obj[country.ISO_A2_EH] = window.c_data.continents[continent_fr[0]].notices[country.ISO_A2_EH]
+        neighbor_obj[country.ISO_A2_EH] = window.saved_initial_data.continents[continent_fr[0]].notices[country.ISO_A2_EH]
         neighbor_obj[country.ISO_A2_EH]["LABEL_X"] = country.LABEL_X
         neighbor_obj[country.ISO_A2_EH]["LABEL_Y"] = country.LABEL_Y
         neighbor_obj[country.ISO_A2_EH]["NAME_FR"] = country.NAME_FR
@@ -957,33 +954,6 @@ const resetclusters = () => {
   });
 
 }
-/* const resetclusters = () => {
-
-  if (window.clusters_cities_cluster != undefined) {
-    map.removeLayer(window.clusters_cities_cluster)
-  }
-
-  if (window.solo_city_cluster != undefined) {
-    window.solo_city_cluster.map(marker => {
-      map.removeLayer(marker)
-    })  
-  }
-
-  if (window.countries_cluster != undefined) {
-    window.countries_cluster.map(cluster=> {
-      if (map.hasLayer(cluster)){ map.removeLayer(cluster) }
-    })
-  }
-
-  if (window.clusters_cities_markers != undefined) { 
-    map.removeLayer(window.clusters_cities_markers)
-  }
-
-  if (window.unknown_marker != undefined) { 
-    map.removeLayer(window.unknown_marker)
-  }
-
-} */
 
 /* CARTELS */
 
@@ -1365,7 +1335,9 @@ const filtersActions = () => {
       window.continents_popups.forEach(popup => { map.removeLayer(popup) })
 
       let selected_type = document.querySelector('input[name="types"]:checked').value
-
+      /*  Change comportement on click */
+      console.log(selected_type)
+      console.log(window.c_data)
       if (selected_type == "all"){
           var processed_filtered_data = window.record_data
           populateLocalisation(processed_filtered_data)
@@ -1384,51 +1356,59 @@ const filtersActions = () => {
 
           window.type_data = processed_filtered_data
       }
-
+      console.log(processed_filtered_data)
+      createContinentMarkers(processed_filtered_data)
 
       //window.prev_filter_data = filtered_data
       
-      window.c_data = processed_filtered_data
+/*       window.c_data = processed_filtered_data
       createContinentMarkers(processed_filtered_data)
       populateLocalisation(processed_filtered_data)
-      map.setView(window.initial_view.latlng, window.initial_view.zoom);
+      map.setView(window.initial_view.latlng, window.initial_view.zoom); */
 
   })
 
   /* Filter Localisation */
   window.selectizeItem.on('change', function() {
 
-      /* Fonctionne à la première impression de l'écran, mais plus après utilisation de filtres (destroy and create problem ?) */
+    /* Fonctionne à la première impression de l'écran, mais plus après utilisation de filtres (destroy and create problem ?) */
+    var value = selectizeItem[0].selectize.getValue();
 
-      var value = selectizeItem[0].selectize.getValue();
+    window.c_data = window.saved_initial_data
+    var filtered_data = c_data.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
+    let processed_filtered_data = createDataObject(filtered_data)
+    populatefilters(processed_filtered_data) 
+    window.c_data = processed_filtered_data
 
-      // if value is a country
-      if (value.length == 2){
-          window["countries_layers"].map(obj => {
-              Object.keys(obj._layers).filter(key => {
-                  if (( obj._layers[key].layerID != value) || (obj._layers[key].layerID == undefined)) { return }
-                  obj._layers[key].fire("click")
-              })
-          })
-      }
 
-      // else value is a continent
-      else{
-          let continent_infos = Object.keys(window.continent_infos).map(key => { 
-              let norm_continent = normalize_string(window.continent_infos[key].norm_name)
-              let norm_value =  normalize_string(value).replace(/^0/, "")
-              if (norm_continent == norm_value) {
-                  return window.continent_infos[key]
-              }
-          }).filter( Boolean )[0]
-          if (! continent_infos) { return }
-          window.continents_popups.map(popup => { 
-              let continent = popup._content.attributes["data-continent"].value
-              if (normalize_string(continent) == normalize_string(continent_infos.name_en)){
-                  map.setView(window.initial_view.latlng, window.initial_view.zoom);
-              }
-          })
-      }
+
+    // if value is a country
+    if (value.length == 2){
+        window["countries_layers"].map(obj => {
+            Object.keys(obj._layers).filter(key => {
+                if (( obj._layers[key].layerID != value) || (obj._layers[key].layerID == undefined)) { return }
+                obj._layers[key].fire("click")
+            })
+        })
+    }
+
+    // else value is a continent
+    else{
+        let continent_infos = Object.keys(window.continent_infos).map(key => { 
+            let norm_continent = normalize_string(window.continent_infos[key].norm_name)
+            let norm_value =  normalize_string(value).replace(/^0/, "")
+            if (norm_continent == norm_value) {
+                return window.continent_infos[key]
+            }
+        }).filter( Boolean )[0]
+        if (! continent_infos) { return }
+        window.continents_popups.map(popup => { 
+            let continent = popup._content.attributes["data-continent"].value
+            if (normalize_string(continent) == normalize_string(continent_infos.name_en)){
+                map.setView(window.initial_view.latlng, window.initial_view.zoom);
+            }
+        })
+    }
   });
   /* Search Plain text */
   searchBox()
