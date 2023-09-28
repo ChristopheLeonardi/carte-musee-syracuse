@@ -366,7 +366,6 @@ const hoverCountryEffect = (e, opacity) => {
   // Get name depending on DOM element
   var continent_name = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent")
   let svg_countries = []
-  console.log(e)
   if (e.layerID){
     var path = `path.${e.layerID.toLowerCase()}`
     if($(path).length == 0 ) { return }
@@ -645,7 +644,6 @@ const onEachTopojson = (features, layer) => {
 
       var path = `path.${layer.layerID.toLowerCase()}`
       if($(path).length == 0 ) { return }
-      console.log($(path))
       $("path.selected").removeClass("selected")
       $(path).toggleClass("selected")
      } 
@@ -655,7 +653,6 @@ const onEachTopojson = (features, layer) => {
     // Vérifie la présence d'instrument dans le pays
     if(!window["c_data"].pays.includes(layer.layerID)){ return }
     createTooltipName(e) 
-    console.log(layer)
     if(layer.has_markers == true) { return }
     $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
     $(e.target._path).css({ opacity: 0.6, fillOpacity: 0.6 })
@@ -677,7 +674,7 @@ const createTooltipName = e => {
   })
 
   $("#tooltip").remove()
-  
+
   if(neighbor_id.includes(e.target.feature.properties.ISO_A2_EH)){ return }
 
   var name_fr = e.target.feature.properties.NAME_FR
@@ -699,6 +696,13 @@ const createCitiesMarkers = layer => {
   layer["has_markers"] = true;
 
   var cities = getNoticeData(layer);
+  // trigger modif filters
+  // populatefilters(c_data)
+
+  var filtered_data = c_data.raw_data.filter(notice => { return layer.feature.properties.ISO_A2_EH == notice["Code ISO-2"] })
+  createDataObject(filtered_data)
+  populatefilters(createDataObject(filtered_data))
+
   var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
 
   var markers = L.markerClusterGroup({
