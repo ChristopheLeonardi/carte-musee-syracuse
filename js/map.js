@@ -118,7 +118,12 @@ function mapMusee(data){
   window["object_type"] = data[3].object_type
   window["c_data"] = createDataObject(instruments_data) 
   window["saved_initial_data"] = window.c_data
-  
+  window["current_dataset"] = window.c_data
+  window["all_recorded_instruments"] = createDataObject(instruments_data.filter(notice => { return notice["URL Enregistrement"] != ""}))
+  window["current_select_data"] = window.c_data
+  window["type_data"] = window.c_data
+  window["data_before_filtering"] = window.c_data
+
   /* Initialize Map */
   const map = L.map('mapMusee', { 
       fullscreenControl: true,
@@ -195,7 +200,6 @@ function mapMusee(data){
 }
 
 const createContinentMarkers = c_data => {
-
   // Remove old popups
   if (window["continents_popups"]){
       window["continents_popups"].forEach(popup => {
@@ -373,7 +377,7 @@ const hoverCountryEffect = (e, opacity) => {
     svg_countries.push(Array.from(element))
   }
   else{
-    window.saved_initial_data.pays.map(country => {
+    window.current_dataset.pays.map(country => {
       if (country === ""){ return }
 
       var path = `path.${continent_name.toLowerCase()}.${country.toLowerCase()}`
@@ -548,7 +552,7 @@ const createSingleMarker = (latlng, icon, notices = false) => {
         // Construct self culster
         var layer_id = getSelfLayer(e.target)
         if (layer_id) { 
-          createCitiesMarkers(layer_id) 
+          createCitiesMarkers(layer_id, window.current_dataset) 
         } 
         else{
           marker.bindPopup(createMarkerPopup(notices)).openPopup();
@@ -627,10 +631,10 @@ const onEachTopojson = (features, layer) => {
   layer.on({
     click: (e) => {
       // Vérifie la présence d'instrument dans le pays
-      if(!window.saved_initial_data.pays.includes(layer.layerID)){ return }
+      if(!window.current_dataset.pays.includes(layer.layerID)){ return }
       if(L.markerClusterGroup == undefined) { return }
-
       if((map.getZoom() >= 4) && (layer.has_markers == true)) { return }
+
       window.continents_popups.forEach(popup => { map.closePopup(popup) })
 
       var country_bounds =  e.target._bounds
@@ -639,7 +643,8 @@ const onEachTopojson = (features, layer) => {
       var neighbor_list = getNeighbor(e.target)
 
       createMarkersNeighbors(neighbor_list, e.target._bounds)
-      createCitiesMarkers(e.target)
+      createCitiesMarkers(e.target, window.current_dataset)
+      
       selectizeItem[0].selectize.setValue(layer.layerID)
 
       var path = `path.${layer.layerID.toLowerCase()}`
@@ -651,7 +656,7 @@ const onEachTopojson = (features, layer) => {
   layer.on( "mouseover", e => { 
 
     // Vérifie la présence d'instrument dans le pays
-    if(!window.saved_initial_data.pays.includes(layer.layerID)){ return }
+    if(!window.current_dataset.pays.includes(layer.layerID)){ return }
     createTooltipName(e) 
     if(layer.has_markers == true) { return }
     $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
@@ -689,25 +694,23 @@ const createTooltipName = e => {
   $("#tooltip").css("top", `${e.originalEvent.layerY - 80}px`)
 }
 
-const createCitiesMarkers = layer => {
+const createCitiesMarkers = (layer, data = false) => {
   if(layer == undefined) { return }
   resetclusters();
 
   layer["has_markers"] = true;
+    var cities = getNoticeData(layer, data);
 
-  var cities = getNoticeData(layer);
-
-
+    var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
   
+    var markers = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      iconCreateFunction: function(cluster) {
+        return L.divIcon(cluster_icon(cluster))
+      }
+  }); 
 
-  var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
 
-  var markers = L.markerClusterGroup({
-    showCoverageOnHover: false,
-    iconCreateFunction: function(cluster) {
-      return L.divIcon(cluster_icon(cluster))
-    }
-  });
 
   var unknownObjectsCount = 0; // Compteur pour le nombre total d'objets pour les localisations inconnues
   var unknownCitiesNames = []; // Tableau pour stocker les noms des localisations inconnues
@@ -755,7 +758,7 @@ const createCitiesMarkers = layer => {
   markers_to_add.length == 1 ? map.addLayer(markers_to_add[0]) : markers_to_add.map(marker => { markers.addLayer(marker)})
 
   // Crée un seul marqueur pour toutes les localisations inconnues combinées
-  if (unknownCitiesNames.length > 0) {
+  if ((unknownCitiesNames.length > 0) && cities[""] && (typeof cities[""].notices != "undefined")) {
     var latlng = [parseFloat(country_center[0]), enableAnteMeridian(parseFloat(country_center[1]))];
 
     var html = `<div class="marker-cluster-medium">
@@ -864,27 +867,24 @@ const createMarkerPopup = notices => {
 
 }
 
-const getNoticeData = layer => {
+const getNoticeData = (layer, data) => {
   // Get french name of continent
   let continent_fr = Object.keys(window.continent_infos).filter(key => {
     return window.continent_infos[key].name_en == layer.feature.properties.CONTINENT
   })[0]
 
-  // Get notices data for country by cities
-  var continent = window.saved_initial_data.continents[continent_fr] 
-  return continent.notices[layer.layerID].cities
+  // Get notices data for country by cities or data pass as parameters
+  if (data){
+    var cities = data.continents[continent_fr].notices[layer.layerID].cities
+  }
+  else{
+    var cities = window.current_dataset.continents[continent_fr].notices[layer.layerID].cities
+  }
+ 
+  return cities
+
 }
 
-const randomizeCoord = (country_center, superficie) => {
-  var fraction = 0.1
-  var degFactor = 0.555
-  var section = Math.sqrt(superficie / Math.PI) * fraction
-  var amplitude = section / degFactor * fraction
-  return [
-    parseFloat(country_center[0]) + amplitude * (Math.random() * 2 - 1) / 4,
-    enableAnteMeridian(parseFloat(country_center[1])) + amplitude * (Math.random() * 2 - 1) / 4
-  ]
-}
 const getNeighbor = country => {
 
   if (country.feature.properties.borders_iso_a2 === null) { return }
@@ -902,9 +902,9 @@ const getNeighbor = country => {
 
       try{
         // Check if there's some notice
-        if (typeof window.saved_initial_data.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
+        if (typeof window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
 
-        neighbor_obj[country.ISO_A2_EH] = window.saved_initial_data.continents[continent_fr[0]].notices[country.ISO_A2_EH]
+        neighbor_obj[country.ISO_A2_EH] = window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH]
         neighbor_obj[country.ISO_A2_EH]["LABEL_X"] = country.LABEL_X
         neighbor_obj[country.ISO_A2_EH]["LABEL_Y"] = country.LABEL_Y
         neighbor_obj[country.ISO_A2_EH]["NAME_FR"] = country.NAME_FR
@@ -1028,7 +1028,7 @@ const createCartel = (e, notices) => {
 
       let title = document.createElement("h3")
           title.setAttribute("class", "notice-title")
-          title.textContent = notice["Titre"].length > 30 ? notice["Titre"].substring(0, 30) + "..." : notice["Titre"]
+          title.textContent = notice["Titre"].length > 30 ? notice["Titre"].substring(0, 50) + "..." : notice["Titre"]
           title_section.appendChild(title)
 
       let details_section = document.createElement("div")
@@ -1289,13 +1289,6 @@ const filtersActions = () => {
 /* populateFilters met à jour les informations sur les filtres. */
 /* ********************************************************************************************** */
 
-/* Générer un set reccord et un set norm, switch set on checkbox */
-/* Générer un objet avec méthodes pour épurer code variables globales */
-  window["saved_initial_data"] = window.c_data
-  window["current_select_data"] = window.c_data
-  window["type_data"] = window.c_data
-  window["record_data"] = window.c_data
-
   // Create first display of localisation
   populateLocalisation(window.c_data)
 
@@ -1303,68 +1296,52 @@ const filtersActions = () => {
   $("#with-records").change(e => {
 
       window.continents_popups.forEach(popup => { map.removeLayer(popup) })
+      let data_to_use = e.target.checked ? window.all_recorded_instruments : window.saved_initial_data
+      window.current_dataset = data_to_use
 
-      if (e.target.checked){ 
-          
-          let filtered_data = window.type_data.raw_data.filter(notice => { return notice["URL Enregistrement"] != ""})
-
-          let processed_filtered_data = createDataObject(filtered_data)
-
-          window.c_data = processed_filtered_data // update markers
-          window.record_data = processed_filtered_data // record data
-
-          populatefilters(processed_filtered_data)
-          createContinentMarkers(processed_filtered_data)
-          populateLocalisation(processed_filtered_data)
-      }
-      else{
-
-          window.c_data = window.current_select_data
-          window.record_data = window.current_select_data
-          populatefilters(window.c_data)
-          createContinentMarkers(window.c_data)
-          populateLocalisation(window.c_data)
-      }
-      
+      populatefilters(data_to_use)
+      createContinentMarkers(data_to_use)
+      populateLocalisation(data_to_use)  
+      filterSearch()
+      map.setView(window.initial_view.latlng, window.initial_view.zoom);
   })
 
   /* Filter by Type */
   $("#types-filter").change(e => {
 
-      /* Si clic sur catégories et click reccorded,  grisé se met à jour + all cat ne se met pas a jour*/
+      // Remove all popup
       window.continents_popups.forEach(popup => { map.removeLayer(popup) })
 
+      // Save current state
+      window.data_before_filtering = window.current_dataset
+
       let selected_type = document.querySelector('input[name="types"]:checked').value
-      /*  Change comportement on click */
-      console.log(selected_type)
-      console.log(window.c_data)
+      
       if (selected_type == "all"){
-          var processed_filtered_data = window.record_data
-          populateLocalisation(processed_filtered_data)
+          var processed_filtered_data = window.data_before_filtering
       }
       else{
           
-          let filtered_data = window.record_data.raw_data.filter(notice => { 
-              return normalize_string(notice["Type d'objet"]).replace(/'/gm, "_") == selected_type
-          })
+        let filtered_data = window.current_dataset.raw_data.filter(notice => { 
+            return normalize_string(notice["Type d'objet"]).replace(/'/gm, "_") == selected_type
+        })
+        var processed_filtered_data = createDataObject(filtered_data)
 
-          let notices_to_check = filtered_data.concat(window.record_data.raw_data)
-          let notices_to_keep = notices_to_check.filter((a, i, aa) => aa.indexOf(a) === i && aa.lastIndexOf(a) !== i)
-
-
-          var processed_filtered_data = createDataObject(notices_to_keep)
-
-          window.type_data = processed_filtered_data
       }
-      console.log(processed_filtered_data)
-      createContinentMarkers(processed_filtered_data)
-
-      //window.prev_filter_data = filtered_data
+      var country_code = selectizeItem[0].selectize.getValue()
+      if (country_code.length == 2){
+        window["countries_layers"].map(obj => {
+          Object.keys(obj._layers).filter(key => {
+              if (( obj._layers[key].layerID != country_code) || (obj._layers[key].layerID == undefined)) { return }
+              createCitiesMarkers(obj._layers[key], processed_filtered_data)
+          })
+      })
+        
+      }
+      else {
+        createContinentMarkers(processed_filtered_data)
+      }
       
-/*       window.c_data = processed_filtered_data
-      createContinentMarkers(processed_filtered_data)
-      populateLocalisation(processed_filtered_data)
-      map.setView(window.initial_view.latlng, window.initial_view.zoom); */
 
   })
 
@@ -1374,12 +1351,13 @@ const filtersActions = () => {
     /* Fonctionne à la première impression de l'écran, mais plus après utilisation de filtres (destroy and create problem ?) */
     var value = selectizeItem[0].selectize.getValue();
 
-    window.c_data = window.saved_initial_data
-    var filtered_data = c_data.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
-    let processed_filtered_data = createDataObject(filtered_data)
-    populatefilters(processed_filtered_data) 
-    window.c_data = processed_filtered_data
-
+    if (value != "" && value.length != 0){
+      window.c_data = window.data_before_filtering
+      var filtered_data = window.current_dataset.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
+      let processed_filtered_data = createDataObject(filtered_data)
+      populatefilters(processed_filtered_data) 
+      window.c_data = processed_filtered_data
+    }
 
 
     // if value is a country
@@ -1402,12 +1380,12 @@ const filtersActions = () => {
             }
         }).filter( Boolean )[0]
         if (! continent_infos) { return }
-        window.continents_popups.map(popup => { 
+/*         window.continents_popups.map(popup => { 
             let continent = popup._content.attributes["data-continent"].value
             if (normalize_string(continent) == normalize_string(continent_infos.name_en)){
                 map.setView(window.initial_view.latlng, window.initial_view.zoom);
             }
-        })
+        }) */
     }
   });
   /* Search Plain text */
@@ -1438,6 +1416,16 @@ const filtersActions = () => {
   })
 
 }
+const getLayerByID = iso2 => {
+  let layer = window["countries_layers"].map(obj => {
+        Object.keys(obj._layers).filter(key => {
+            if (( obj._layers[key].layerID != iso2) || (obj._layers[key].layerID == undefined)) { return }
+            return obj._layers[key]
+        })
+    }).filter( Boolean )[0]
+    return layer
+}
+
 /* Reset Filters Button*/
 const createResetButton = () => {
   let reset_button = document.createElement("button")
@@ -1451,7 +1439,7 @@ const createResetButton = () => {
     // Reset data
     window.c_data = window.saved_initial_data
     window.type_data = window.c_data
-    window.record_data = window.c_data
+    window.data_before_filtering = window.c_data
 
     // Reset recorded
     $("#with-records").prop( "checked", false )
@@ -1461,6 +1449,9 @@ const createResetButton = () => {
 
     // Reset Types
     $("#all-types").prop( "checked", true )
+
+    // Reset input
+    document.getElementById("seeker").value = ""
 
     // Reset Filters Values and map markers
     populatefilters(window.c_data)
@@ -1648,30 +1639,12 @@ const searchBox = () => {
   }
 
   $('.search-bar').submit(function(e) { e.preventDefault() })
-  $('#search').click(function(e) {
-
-      var filterQuery = filterSearch()
-      var processed_filtered_data = createDataObject(filterQuery.filtered)
-
-      // Set filtered data for other filters
-      window.c_data = processed_filtered_data
-      window.current_select_data = processed_filtered_data
-      window.type_data = processed_filtered_data
-      window.record_data = processed_filtered_data
-
-      // Unset recorded instrument
-      document.getElementById("with-records").checked = false;
-
-      populatefilters(processed_filtered_data)
-      createContinentMarkers(processed_filtered_data)
-      map.setView(window.initial_view.latlng, window.initial_view.zoom);
-
-
-  })
+  $('#search').click(function(e) { filterSearch() })
 
 }
 const filterSearch = () => {
-  const data = window.saved_initial_data.raw_data
+  let is_record_requested = document.getElementById("with-records").checked
+  const data = is_record_requested ? window.all_recorded_instruments.raw_data : window.saved_initial_data.raw_data
   var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
 
   // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
@@ -1685,14 +1658,15 @@ const filterSearch = () => {
       searchTerms.toLowerCase().split(' ').map(q => queryReg.push(`(?=.*${q})`))
   }
 
-  var filtered = []
-
   /* Data filter method */
   var filtered = []
 
   const filterIt = (arr, query) => {
       return arr.filter(obj => Object.keys(obj).some(key => {
-          return new RegExp(query, "mgi").test(obj[key])
+        if (key !== 'Enregistrement') {   
+            return new RegExp(query, "mgi").test(obj[key]);
+        }
+        return false;
       }))
   }
   queryReg.map(query => { 
@@ -1703,8 +1677,20 @@ const filterSearch = () => {
   if (queryReg.length > 1) {
       const findDuplicates = arr => arr.filter((item, index) => arr.indexOf(item) !== index)
       filtered = findDuplicates(filtered.flat())
-  }
-  return { "filtered": filtered.flat(), "query": queryReg }
+  } 
+
+  var filterQuery = { "filtered": filtered.flat(), "query": queryReg }
+  var processed_filtered_data = createDataObject(filterQuery.filtered)
+
+  // Set filtered data for other filters
+  window.current_dataset = processed_filtered_data
+  window.current_select_data = processed_filtered_data
+  window.type_data = processed_filtered_data
+  window.data_before_filtering = processed_filtered_data
+
+  populatefilters(processed_filtered_data)
+  createContinentMarkers(processed_filtered_data)
+  map.setView(window.initial_view.latlng, window.initial_view.zoom);
 }
 
 /* Tableau accessible Mise en attente sur une V2 */
