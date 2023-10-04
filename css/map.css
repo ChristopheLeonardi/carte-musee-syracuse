@@ -241,6 +241,12 @@ fieldset{
     left: -300px;
     transition: 0.2s ease-in-out left
 } 
+#mapFilter.fullscreen-filters{
+    max-height: unset;
+    overflow-y: unset;
+    bottom: 8vh;
+    border-radius: 0 16px 16px 0;
+} 
 #open-close-filter{
     position: absolute;
     left: 0px;
@@ -259,6 +265,9 @@ fieldset{
 #open-close-filter.open{
     left: 300px;
     transition: 0.2s ease-in-out left
+}
+#open-close-filter.open.fullscreen-filters{
+    left: 0px;
 }
 #mapMusee.open{
     width: calc(100% - 300px);
@@ -427,6 +436,9 @@ fieldset{
     bottom: unset;
     left: unset;
 }
+#mapMusee .country-marker .continent_unknown_country{
+    text-transform: capitalize;
+}
 #mapMusee .country-marker.unknown{
     width: 100px;
     display: flex;
@@ -529,46 +541,46 @@ fieldset{
     display: block;
     position: relative;
 }
-#mapMusee .instrument_de_musique{
+#mapMusee .instrument_de_musique:not(.radio){
     background-color: #DBB7C1;
 }
-#mapMusee .autre{
+#mapMusee .autre:not(.radio){
     background-color: #6DA7C0;
 }
-#mapMusee .oeuvre_d_art{
+#mapMusee .oeuvre_d_art:not(.radio){
     background-color: #A9BED8;
 }
-#mapMusee .document_ecrit{
+#mapMusee .document_ecrit:not(.radio){
     background-color: #B3D6FD;
 }
-#mapMusee .accessoire{
+#mapMusee .accessoire:not(.radio){
     background-color: #90D4D8;
 }
-#mapMusee .outil{
+#mapMusee .outil:not(.radio){
     background-color: #FEE8BE;
 }
-#mapMusee .element_d_instrument_de_musique{
+#mapMusee .element_d_instrument_de_musique:not(.radio){
     background-color: #EFC3FF;
 }
-#mapMusee .cat_button.instrument_de_musique p::after{
+#mapMusee .cat_button.instrument_de_musique:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/instrument_de_musique.svg)
 }
-#mapMusee .cat_button.autre p::after{
+#mapMusee .cat_button.autre:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/autre.svg)
 }
-#mapMusee .cat_button.oeuvre_d_art p::after{
+#mapMusee .cat_button.oeuvre_d_art:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/oeuvre_d_art.svg)
 }
-#mapMusee .cat_button.document_ecrit p::after{
+#mapMusee .cat_button.document_ecrit:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/document_ecrit.svg)
 }
-#mapMusee .cat_button.accessoire p::after{
+#mapMusee .cat_button.accessoire:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/accessoire.svg)
 }
-#mapMusee .cat_button.outil p::after{
+#mapMusee .cat_button.outil:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/outil.svg)
 }
-#mapMusee .cat_button.element_d_instrument_de_musique p::after{
+#mapMusee .cat_button.element_d_instrument_de_musique:not(.radio) p::after{
     content: url(/ui/plug-in/integration/carte-instrument-musee/img/element_d_instrument_de_musique.svg)
 }
 #mapMusee .leaflet-popup-close-button{

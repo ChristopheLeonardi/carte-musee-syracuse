@@ -197,7 +197,37 @@ function mapMusee(data){
   })
 
   createResetButton()
+
+    
+  // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
+  document.addEventListener('fullscreenchange', onFullScreenChange);
 }
+
+/* Add filters on fullscreen */
+// Cette fonction sera appelée lorsque la carte passe en mode plein écran
+function onFullScreenChange() {
+  var mapElement = document.getElementById('mapMusee');
+  var filterElement = document.getElementById('mapFilter');
+  var buttonElement = document.getElementById('open-close-filter');
+  var parentContainer = document.getElementById('mapElementContainer');
+
+  // Vérifie si la carte est en mode plein écran
+  if (document.fullscreenElement === mapElement) {
+      // Si oui, déplace les éléments de filtre en dehors du conteneur de la carte
+      mapElement.appendChild(filterElement);
+      mapElement.appendChild(buttonElement);
+      $(filterElement).toggleClass("fullscreen-filters")
+      $(buttonElement).toggleClass("fullscreen-filters")
+  } else {
+      // Si non, remet les éléments de filtre dans le conteneur de la carte
+      parentContainer.insertBefore(filterElement, mapElement)
+      parentContainer.insertBefore(buttonElement, mapElement)
+      $(filterElement).toggleClass("fullscreen-filters")
+      $(buttonElement).toggleClass("fullscreen-filters")
+  }
+}
+
+/* END Add filters on fullscreen */
 
 const createContinentMarkers = c_data => {
   // Remove old popups
@@ -496,8 +526,8 @@ const createMarkersCountry = (continent_obj, bounds=false) => {
   if(unknown_countries){
     let unknown_countries_notices = unknown_countries.obj.cities[""].notices
     let continent_infos = window.continent_infos[unknown_countries_notices[0].Continent]
-  
     var html = `<div class="country-marker unknown">
+                  <p class="continent_unknown_country">${continent_infos.norm_name} : </p>
                   <p>Sans Localisation</p><p>${unknown_countries.obj.count} Objet(s)</p>
                 </div>`
                 
@@ -646,6 +676,9 @@ const onEachTopojson = (features, layer) => {
       createCitiesMarkers(e.target, window.current_dataset)
       
       selectizeItem[0].selectize.setValue(layer.layerID)
+      selectizeItem[0].selectize.on("change", e => {
+        console.log("change")
+      })
 
       var path = `path.${layer.layerID.toLowerCase()}`
       if($(path).length == 0 ) { return }
@@ -763,6 +796,7 @@ const createCitiesMarkers = (layer, data = false) => {
 
     var html = `<div class="marker-cluster-medium">
                   <div class="city-marker unknown" data-ville="${normalize_string('?')}">
+                    <p>${cities[""].notices[0].Pays}</p>
                     <p>Sans Localisation</p>
                     <p>${unknownObjectsCount} Objet(s)</p>
                   </div>
@@ -848,9 +882,20 @@ const createMarkerPopup = notices => {
   city_container.setAttribute("style", `transform: translate(-54px, -9px); `)
   city_container.setAttribute("title", "Voir une sélection des éléments")
 
-
   var name_element = document.createElement("p")
-  name_element.textContent = notices[0].Ville == "" ? `Sans localisation` : notices[0].Ville
+
+  if (notices[0].Ville == "") {
+    var textNode1 = document.createTextNode(notices[0].Pays);
+    var brNode = document.createElement('br');
+    var textNode2 = document.createTextNode('Sans localisation');
+
+    name_element.appendChild(textNode1);
+    name_element.appendChild(brNode);
+    name_element.appendChild(textNode2);
+  } else {
+      name_element.textContent = notices[0].Ville;
+  }
+  
   city_container.appendChild(name_element)
 
   var total_number = document.createElement("p")
@@ -1112,15 +1157,16 @@ const createCartel = (e, notices) => {
           //let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${city}#/Search/(query:(${facet}',ForceSearch:!t,InitialSearch:!f,Page:0,PageRange:3,QueryString:${city},ResultSize:50,ScenarioCode:MUSEE,ScenarioDisplayMode:display-mosaic,SearchGridFieldsShownOnResultsDTO:!(),SearchLabel:'',SearchTerms:${city},SortField:!n,SortOrder:0,TemplateParams:(Scenario:'',Scope:MUSEE,Size:!n,Source:'',Support:'',UseCompact:!f),UseSpellChecking:!n),sst:4)`
 
           /* 14/09/2023 test nouvelle query */
-          let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=+${category[0].name_system}+${city}`
+          //let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=+${category[0].name_system}+${city}`
 
-          let category_search_link = document.createElement("a")
+          /* 02/10/2023 CL Désacivation du bouton dans l'attente d'une query sans bruit */
+          /* let category_search_link = document.createElement("a")
                   category_search_link.setAttribute("class", "btn btn-default btn-link")
                   category_search_link.setAttribute("href", query_category_link)
                   category_search_link.setAttribute("alt", "Voir le résultat de recherche (nouvel onglet)")
                   category_search_link.setAttribute("target", "_blank")
                   category_search_link.textContent = "Voir la sélection"
-                  link_container.appendChild(category_search_link)
+                  link_container.appendChild(category_search_link) */
       }
 
       // Construction de l'url de la notice à partir du nom et du numéro de notice (formaté avec leading 0)
@@ -1346,11 +1392,18 @@ const filtersActions = () => {
   })
 
   /* Filter Localisation */
+  $(document).on('mousedown', '.selectize-dropdown-content [data-value]', function(e) {
+    var value = $(this).attr('data-value');
+    filterLocHandler(value)
+  });
+  /* Filter Localisation */
   window.selectizeItem.on('change', function() {
-
-    /* Fonctionne à la première impression de l'écran, mais plus après utilisation de filtres (destroy and create problem ?) */
     var value = selectizeItem[0].selectize.getValue();
+    filterLocHandler(value)
+ 
+  });
 
+  function filterLocHandler(value){
     if (value != "" && value.length != 0){
       window.c_data = window.data_before_filtering
       var filtered_data = window.current_dataset.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
@@ -1380,14 +1433,10 @@ const filtersActions = () => {
             }
         }).filter( Boolean )[0]
         if (! continent_infos) { return }
-/*         window.continents_popups.map(popup => { 
-            let continent = popup._content.attributes["data-continent"].value
-            if (normalize_string(continent) == normalize_string(continent_infos.name_en)){
-                map.setView(window.initial_view.latlng, window.initial_view.zoom);
-            }
-        }) */
+
     }
-  });
+  }
+
   /* Search Plain text */
   searchBox()
 
@@ -1521,12 +1570,29 @@ const createSelectizeDOM = data => {
       array_continent.push(array_options)
 
   })
+  array_continent.unshift([{
+    "id" : "empty",
+    "name_fr" : "Localisation",
+    "name_native" : "",
+    "count" : "",
+  }])
   return array_continent
 }
 
 const selectizeOptionDOM = (item, escape) => {
+
+  if (item.name_fr[0] == "0"){
+    var name_fr = "<b>" + escape(item.name_fr).replace(/^0|^_/, "") + "</b>"
+  }
+  else if (item.name_fr == "empty"){
+    var name_fr = escape(item.name_fr)
+  }
+  else {
+    var name_fr = escape(item.name_fr).replace(/^0|^_/, "")
+  }
+  
   let html = `<div class="option">
-                  <span class="name_fr">${item.name_fr ? item.name_fr[0] == "0" ? "<b>" + escape(item.name_fr).replace(/^0|^_/, "") + "</b>" : escape(item.name_fr).replace(/^0|^_/, "") : " "}</span>
+                  <span class="name_fr">${item.name_fr ? name_fr : " "}</span>
                   <span class="name_native">${item.name_native ? "<i>(" + escape(item.name_native) + ")</i>" : " "}</span>
                   <span class="count">${item.count ? escape(item.count) : ""}</span>
               </div>`
@@ -1643,6 +1709,10 @@ const searchBox = () => {
 
 }
 const filterSearch = () => {
+
+  // Reset location
+  selectizeItem[0].selectize.setValue("empty")
+
   let is_record_requested = document.getElementById("with-records").checked
   const data = is_record_requested ? window.all_recorded_instruments.raw_data : window.saved_initial_data.raw_data
   var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
