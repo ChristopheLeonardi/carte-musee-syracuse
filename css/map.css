@@ -285,11 +285,21 @@ fieldset{
     margin: 0;
 }
 /* Reset Button */
-#reset-button{
+/* #reset-button{
     z-index: 999;
     position: absolute;
     bottom: 20px;
     right: 10px;
+} */
+#reset-button{
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    margin-top: 5px;
+    background-color: #fff;
+}
+#reset-button:hover{
+    background-color: #f4f4f4;
 }
 /* Map */
 #mapMusee {
@@ -748,6 +758,7 @@ fieldset{
     text-transform: uppercase;
     text-align: left;
 }
+#mapMusee .text-hierarchy,
 #mapMusee .lieu-creation,
 #mapMusee .text-btn{
     font-family: 'SourceSansPro', 'Arial', 'Helvetica', sans-serif;
@@ -757,9 +768,13 @@ fieldset{
     margin: 0.5em 3px 1em 0;
     padding: 0;
 }
+#mapMusee .text-hierarchy{
+    font-size: 1em;
+}
 #mapMusee .text-btn:hover{
     color: #6DA7C0;
 }
+#mapMusee .text-hierarchy:not(:last-child)::after,
 #mapMusee .text-btn:not(:last-child)::after{
     content: " | ";
     margin-left: 3px;

@@ -71,14 +71,29 @@ function get_data(promises) {
 }
 
 // Vérification que tous les modules sont chargés
-function isLibrariesLoaded() {
+/* function isLibrariesLoaded() {
   return typeof L !== 'undefined' 
       && typeof L.map === 'function'
       && typeof L.markerClusterGroup === 'function'
       && typeof pako !== 'undefined'
-}
-function onLibrariesLoaded(attempt_count) {
-  if (isLibrariesLoaded()) {
+} */
+/* function onLibrariesLoaded() {
+  var isLoaded = isLibrariesLoaded()
+  console.log(isLibrariesLoaded())
+  console.log(typeof L) 
+  console.log(typeof L.map)
+  console.log(typeof L.markerClusterGroup)
+  console.log(typeof pako) */
+  /* while(!isLoaded){
+    console.log('Tentative de chargement de Leaflet...');
+
+    setTimeout(function () {
+      isLoaded = isLibrariesLoaded();
+    }, 250);
+  } */
+/*   wait_for_data(promises)
+ */
+  /* if (isLibrariesLoaded()) {
     wait_for_data(promises)
   } else {
     // Rechargement de la page après 4 tentatives avec message d'erreur
@@ -94,17 +109,30 @@ function onLibrariesLoaded(attempt_count) {
 
     setTimeout(function () {
       console.log('Tentative de chargement de Leaflet...');
-      onLibrariesLoaded(attempt_count + 1);
-    }, 2000);
-  }
-} 
+      onLibrariesLoaded();
+    }, 250);
+  } */
+/* } 
+ */
 
 $(document).ready(function() {
   $(".loader").show()
+  wait_for_data(promises);
+/*   loadScriptsReturnPromise(carte_instruments_musee)
+      .then(() => {
+          console.log("Toutes les bibliothèques sont chargées.");
+          console.log(typeof L);
+          console.log(typeof L.map);
+          console.log(typeof L.markerClusterGroup);
+          console.log(typeof pako);
 
-  var attempt_count = 0
-  onLibrariesLoaded(attempt_count);
-})
+          var promises = [];
+          wait_for_data(promises);
+      })
+      .catch(error => {
+          console.error(error);
+      }); */
+});
 
 function mapMusee(data){
   console.log(data)
@@ -314,7 +342,6 @@ const createDataObject = (instruments_data) => {
     c_data.count_by_type[item["Type d'objet"]] =
       (c_data.count_by_type[item["Type d'objet"]] || 0) + 1;
   });
-
   return c_data;
 };
 
@@ -491,6 +518,50 @@ const createMarkersCountry = (continent_obj, bounds=false) => {
     }
   })
 
+  countries_cluster.on('clustermouseover', function(event) {
+    getHoverCountryCluster(event, 0.6)
+
+  })
+  countries_cluster.on('clustermouseout', function(event) {
+    getHoverCountryCluster(event, 0)
+
+  })
+  function getHoverCountryCluster(event, opacity){
+    var selected_countries = []
+      
+    var markers = event.layer._markers
+    if (markers){
+      getMarkersIds(markers, selected_countries)
+    }
+
+    var childClusters = event.layer.options.icon._childClusters
+    if(childClusters){
+      childClusters.map(cluster => {
+        let markers = cluster._markers
+        if (markers){
+          getMarkersIds(markers, selected_countries)
+        }
+      })
+    }
+    
+    function getMarkersIds(markers, selected_countries){
+      markers.map(marker => { 
+        let id = $(marker.options.icon.options.html)
+        if (id.attr("id")) { 
+          selected_countries.push(id.attr("id").replace("glob-", ""))
+        }
+      })
+    }
+    
+    selected_countries.map(country_code =>{
+      window.countries_layers.map(layers => { 
+        layers.eachLayer(layer => {
+          if(layer.feature.properties.ISO_A2_EH != country_code){ return }
+          hoverCountryEffect(layer, opacity)
+        })
+      })
+    })
+  }
 
   countries_to_display.map(country => {
     var topo = window["topojson_data"].filter(item => {return item.ISO_A2_EH == country.code })[0]
@@ -555,6 +626,7 @@ const cluster_icon = cluster => {
     temp.push(country)
     let regex = /<[^>]*>(\d+)\s*[^<]*<\/[^>]*>/
     let number = country.options.icon.options.html.match(regex)
+    //console.log(country.options.icon.options)
     if (number) { count += parseInt(number[1]) }
   })
 
@@ -863,7 +935,7 @@ const createMarkerPopup = notices => {
     let button_cat = document.createElement("button")
     button_cat.setAttribute("class", `cat_button ${normalize_string(cat).replace("'", "_")}`)
     button_cat.setAttribute("style", `transform: translate(${pos_x}px, ${pos_y}px); transform-origin: 50% 50%;`)
-    button_cat.setAttribute("title", `Voir une sélection des ${cat_name_pluriel}`)
+    button_cat.setAttribute("title", `Voir une sélection des ${cat_name_pluriel.replace("Oe","Œ")}`)
 
     $(button_cat).on("click", function(e){
       createCartel(e, cat_notices)
@@ -1085,15 +1157,19 @@ const createCartel = (e, notices) => {
       let hierarchy_content = [notice["Instrument niveau 1"], notice["Instrument niveau 2"], notice["Instrument niveau 3"]]
       hierarchy_content.map(term => {
           if (term == "") {return}
-          let button = document.createElement("button")
-          button.setAttribute("class", "text-btn")
-          button.setAttribute("type", "button")
-          button.setAttribute("data-search", normalize_string(term).replace("'", "_"))
+          /* CL 06/11/23 Désactivation du bouton de recherche dans la hiérarchie */
+          let button = document.createElement("p")
+          button.setAttribute("class", "text-hierarchy")
+
+          //let button = document.createElement("button")
+          //button.setAttribute("class", "text-btn")
+          //button.setAttribute("type", "button")
+          //button.setAttribute("data-search", normalize_string(term).replace("'", "_"))
           button.textContent = term
-          $(button).click(function(){
-              document.getElementById("seeker").value = `"${term}"`
-              $("#search").click()
-          })
+          //$(button).click(function(){
+          //    document.getElementById("seeker").value = `"${term}"`
+          //    $("#search").click()
+          //})
           hierarchy.appendChild(button)
           
       })
@@ -1476,7 +1552,8 @@ const getLayerByID = iso2 => {
 }
 
 /* Reset Filters Button*/
-const createResetButton = () => {
+/* const createResetButton = () => {
+
   let reset_button = document.createElement("button")
   reset_button.id= "reset-button"
   reset_button.setAttribute("class", "btn btn-default")
@@ -1508,12 +1585,54 @@ const createResetButton = () => {
     map.setView(window.initial_view.latlng, window.initial_view.zoom);
   })
   document.getElementById("mapMusee").appendChild(reset_button)
+  
+  //mapMusee(window["data"])
+  //console.log(window["map"])
+  //console.log(window["data"]) 
+}  */
+function createResetButton(map) {
+
+  // Création d'un bouton réinitialisant la carte
+  var resetButton = document.createElement("button")
+  resetButton.id= "reset-button"
+  resetButton.setAttribute("class", "leaflet-bar leaflet-control")
+  resetButton.setAttribute("type", "button")
+  resetButton.setAttribute("title", "Réinitialiser la carte")
+
+  let img = new DOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328.32 335.24">
+          <path d="m272.68,41.69c.7-1.2,1.18-2.62,2.13-3.58,8.06-8.17,16.25-16.22,24.3-24.4,5.24-5.33,11.3-7.22,18.38-4.58,6.45,2.41,9.87,8.12,9.88,16.08.03,28.45.04,56.89,0,85.34-.02,10.53-6.48,17.03-17.06,17.05-28.33.07-56.65.05-84.98,0-8.13-.01-13.87-3.55-16.35-10.11-2.69-7.13-.63-13.12,4.68-18.33,8.01-7.85,15.92-15.82,24.7-24.56-8.3-5.21-15.85-10.72-24.06-14.95-35.34-18.23-70.78-15.72-104.47,3.32-42.34,23.92-62.85,61.49-61.73,110.1,1.25,54.33,43.92,102.97,97.48,112.19,59.06,10.17,113.16-20.46,134.68-76.25,4.25-11.02,11.61-14.93,23.31-12.42,4.14.89,8.32,1.63,12.44,2.59,9.48,2.2,14.53,10.57,11.35,19.58-22.19,62.8-65.85,101.96-131.34,113.81-84.9,15.36-166.14-36.91-189.75-119.88C-19.69,121.46,37.59,25.09,129.83,4.28c51.97-11.73,97.68,1,138.54,33.99.87.7,1.74,1.42,2.62,2.11.18.14.44.2.66.29.34.34.69.69,1.03,1.03Z"/>
+      </svg>`,
+      'application/xml');
+
+  resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
+
+  $(resetButton).on("click", e => {
+    let recordedCheckbox = document.getElementById("with-records")
+    recordedCheckbox.checked = false
+    document.getElementById("seeker").value = ""
+
+    if (window.map == undefined) { return }
+    window.map.off()
+    window.map.remove()
+    window.map = undefined
+    
+    mapMusee(window["data"])
+  })
+
+  // Ajoutez le bouton à la carte
+  var resetControl = L.control({ position: 'topleft' });
+  resetControl.onAdd = function() {
+      return resetButton;
+  };
+  resetControl.addTo(window["map"]);
 
 } 
+
 const displayResultNumber = data => {
   var count = 0
   Object.keys(data.continents).map(continent => { count += data.continents[continent].count })
-  document.getElementById("nb-items").textContent = `${count} Object(s)`
+  document.getElementById("nb-items").textContent = `${count} Objet(s)`
 }
 
 const populateLocalisation = data => {
@@ -1644,7 +1763,7 @@ const populateObjectTypes = data => {
 
       let label = document.createElement("label")
       label.setAttribute("for", type.type)
-      label.textContent = type.label_pluriel
+      label.textContent = type.label_pluriel.replace("Oe", "Œ")
       radio_container.appendChild(label)
 
       let input = document.createElement("input")
