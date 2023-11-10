@@ -1,0 +1,111 @@
+{
+    "object_type": [
+        { 
+            "name": "Instrument_de_musique",
+            "layer": "marker-cluster-instru",
+            "color": "#dbb7c1",
+            "icon": "img/instrument_de_musique.svg",
+            "disabled_icon": "img/nobg-instrument_de_musique.svg",
+            "type": "instrument_de_musique",
+            "label": "Instrument de musique",
+            "label_pluriel": "Instruments de musique",
+            "cluster_multiple": false,
+            "name_system" : "musical instruments"
+        },
+        
+        { 
+            "name": "oeuvre_d'art",
+            "layer": "marker-cluster-oeuvre",
+            "color": "#a9bed8",
+            "icon": "img/oeuvre_d_art.svg",
+            "disabled_icon": "img/nobg-oeuvre_d_art.svg",
+            "type": "oeuvre_d_art",
+            "label": "Oeuvre d'art",
+            "label_pluriel": "Oeuvres d'art",
+            "cluster_multiple": false,
+            "name_system" : "Oeuvre d!'art"
+        },
+        { 
+            "name": "Document_ecrit",
+            "layer": "marker-cluster-docu",
+            "color": "#b3d6fd",
+            "icon": "img/document_ecrit.svg",
+            "disabled_icon": "img/nobg-document_ecrit.svg",
+            "type": "document_ecrit",
+            "label": "Document écrit",
+            "label_pluriel": "Documents écrit",
+            "cluster_multiple": false,
+            "name_system" : "Document écrit"
+        },
+        { 
+            "name": "accessoire",
+            "layer": "marker-cluster-accessoire",
+            "color": "#90d4d8",
+            "icon": "img/accessoire.svg",
+            "disabled_icon": "img/nobg-accessoire.svg",
+            "type": "accessoire",
+            "label": "Accessoire",
+            "label_pluriel": "Accessoires",
+            "cluster_multiple": false,
+            "name_system" : "Accessoire"
+        },
+        
+        { 
+            "name": "outil",
+            "layer": "marker-cluster-outil",
+            "color": "#fee8be",
+            "icon": "img/outil.svg",
+            "disabled_icon": "img/nobg-outil.svg",
+            "type": "outil",
+            "label": "Outil",
+            "label_pluriel": "Outils",
+            "cluster_multiple": false,
+            "name_system" : "Outil"
+        },
+        
+        { 
+            "name": "element_d_instrument_de_musique",
+            "layer": "marker-cluster-element_d_instrument_de_musique",
+            "color": "#EFC3FF",
+            "icon": "img/element_d_instrument_de_musique.svg",
+            "disabled_icon": "img/nobg-element_d_instrument_de_musique.svg",
+            "type": "element_d_instrument_de_musique",
+            "label": "Élément d'instrument de musique",
+            "label_pluriel":  "Éléments d'instruments de musique",
+            "cluster_multiple": false,
+            "name_system" : "parts of musical instruments"
+        },
+        { 
+            "name": "autre",
+            "layer": "marker-cluster-autre",
+            "color": "#6da7c0",
+            "icon": "img/autre.svg",
+            "disabled_icon": "img/nobg-autre.svg",
+            "type": "autre",
+            "label": "Autre",
+            "label_pluriel": "Autres",
+            "cluster_multiple": false,
+            "name_system" : ""
+        },
+        { 
+            "name": "all",
+            "layer": "marker-cluster-all",
+            "color": "#B3D6FD",
+            "icon": "",
+            "type": "all",
+            "label": "all",
+            "cluster_multiple": false,
+            "name_system" : "all"
+ 
+        }
+    ],
+    "continents_infos":{
+        "Asie" :             { "norm_name":"asie",             "name_en":"Asia",          "latlng":[30, 100],         "zoom_level":3    },
+        "Afrique" :          { "norm_name":"afrique",          "name_en":"Africa",        "latlng":[10, 17.16163522], "zoom_level":3.25 },
+        "Europe" :           { "norm_name":"europe",           "name_en":"Europe",        "latlng":[49, 30],          "zoom_level":2.5  },
+        "Amérique du Nord" : { "norm_name":"amerique_du_nord", "name_en":"North America", "latlng":[35, 260],         "zoom_level":3    },
+        "Amérique du Sud" :  { "norm_name":"amerique_du_sud",  "name_en":"South America", "latlng":[-10, 305],        "zoom_level":3    },
+        "Océanie" :          { "norm_name":"oceanie",          "name_en":"Oceania",       "latlng":[-30, 150],        "zoom_level":4    },
+        "unknown" :          { "norm_name":"unknown",          "name_en":"unknown",       "latlng":[-180 , -180],     "zoom_level":4    }
+    }
+}

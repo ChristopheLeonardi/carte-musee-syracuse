@@ -14,7 +14,7 @@ function get_data(promises) {
 
     // Mettez à jour l'URL du fichier CSV compressé au format gzip
     promises.push(
-      fetch('/ui/plug-in/integration/carte-instrument-musee/data/data-carte_2023-11-06.csv.gz')
+      fetch('/ui/plug-in/integration/carte-instrument-musee/data/data-carte-collections_2023-07-20.csv.gz')
         .then(response => {
           if (!response.ok) {
             throw new Error(`Erreur HTTP : ${response.status}`);
@@ -26,9 +26,7 @@ function get_data(promises) {
           const inflatedData = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
 
           // Parsez le contenu décompressé en CSV avec d3
-          return d3.tsvParse(inflatedData);
-          //return d3.csvParse(inflatedData);
-
+          return d3.csvParse(inflatedData);
         })
     );
 
@@ -59,7 +57,7 @@ function get_data(promises) {
       );
     }
 
-    setTimeout(() => controller.abort(), 2000);
+    setTimeout(() => controller.abort(), 1000);
     Promise.all(promises, { signal: controller.signal })
       .then(data => {
         window["data"] = data;
@@ -73,29 +71,13 @@ function get_data(promises) {
 }
 
 // Vérification que tous les modules sont chargés
-/* function isLibrariesLoaded() {
+function isLibrariesLoaded() {
   return typeof L !== 'undefined' 
       && typeof L.map === 'function'
       && typeof L.markerClusterGroup === 'function'
-      && typeof pako !== 'undefined'
-} */
-/* function onLibrariesLoaded() {
-  var isLoaded = isLibrariesLoaded()
-  console.log(isLibrariesLoaded())
-  console.log(typeof L) 
-  console.log(typeof L.map)
-  console.log(typeof L.markerClusterGroup)
-  console.log(typeof pako) */
-  /* while(!isLoaded){
-    console.log('Tentative de chargement de Leaflet...');
-
-    setTimeout(function () {
-      isLoaded = isLibrariesLoaded();
-    }, 250);
-  } */
-/*   wait_for_data(promises)
- */
-  /* if (isLibrariesLoaded()) {
+}
+function onLibrariesLoaded(attempt_count) {
+  if (isLibrariesLoaded()) {
     wait_for_data(promises)
   } else {
     // Rechargement de la page après 4 tentatives avec message d'erreur
@@ -110,31 +92,18 @@ function get_data(promises) {
     }
 
     setTimeout(function () {
-      console.log('Tentative de chargement de Leaflet...');
-      onLibrariesLoaded();
-    }, 250);
-  } */
-/* } 
- */
+      console.log('Tentative de rechargement de Leaflet...');
+      onLibrariesLoaded(attempt_count + 1);
+    }, 1000);
+  }
+} 
 
 $(document).ready(function() {
   $(".loader").show()
-  wait_for_data(promises);
-/*   loadScriptsReturnPromise(carte_instruments_musee)
-      .then(() => {
-          console.log("Toutes les bibliothèques sont chargées.");
-          console.log(typeof L);
-          console.log(typeof L.map);
-          console.log(typeof L.markerClusterGroup);
-          console.log(typeof pako);
 
-          var promises = [];
-          wait_for_data(promises);
-      })
-      .catch(error => {
-          console.error(error);
-      }); */
-});
+  var attempt_count = 0
+  onLibrariesLoaded(attempt_count);
+})
 
 function mapMusee(data){
   console.log(data)
@@ -147,12 +116,6 @@ function mapMusee(data){
   window["continent_infos"]  = data[3].continents_infos
   window["object_type"] = data[3].object_type
   window["c_data"] = createDataObject(instruments_data) 
-  window["saved_initial_data"] = window.c_data
-  window["current_dataset"] = window.c_data
-  window["all_recorded_instruments"] = createDataObject(instruments_data.filter(notice => { return notice["URL Enregistrement"] != ""}))
-  window["current_select_data"] = window.c_data
-  window["type_data"] = window.c_data
-  window["data_before_filtering"] = window.c_data
 
   /* Initialize Map */
   const map = L.map('mapMusee', { 
@@ -175,7 +138,7 @@ function mapMusee(data){
   }).addTo(map)
 
   // Create markers for each continent
-  createContinentMarkers(window.saved_initial_data)
+  createContinentMarkers(c_data)
 
   /* Create Countries layers */
   window["countries_layers"] = []
@@ -208,8 +171,8 @@ function mapMusee(data){
 
 
   /* Filters */
-  createOptionsLocalisation(window.saved_initial_data)
-  populatefilters(window.saved_initial_data)
+  createOptionsLocalisation(c_data)
+  populatefilters(c_data)
 
 
   $(".loader").hide();
@@ -225,41 +188,10 @@ function mapMusee(data){
       }
     };
   })
-
-  createResetButton()
-
-    
-  // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
-  document.addEventListener('fullscreenchange', onFullScreenChange);
 }
-
-/* Add filters on fullscreen */
-// Cette fonction sera appelée lorsque la carte passe en mode plein écran
-function onFullScreenChange() {
-  var mapElement = document.getElementById('mapMusee');
-  var filterElement = document.getElementById('mapFilter');
-  var buttonElement = document.getElementById('open-close-filter');
-  var parentContainer = document.getElementById('mapElementContainer');
-
-  // Vérifie si la carte est en mode plein écran
-  if (document.fullscreenElement === mapElement) {
-      // Si oui, déplace les éléments de filtre en dehors du conteneur de la carte
-      mapElement.appendChild(filterElement);
-      mapElement.appendChild(buttonElement);
-      $(filterElement).toggleClass("fullscreen-filters")
-      $(buttonElement).toggleClass("fullscreen-filters")
-  } else {
-      // Si non, remet les éléments de filtre dans le conteneur de la carte
-      parentContainer.insertBefore(filterElement, mapElement)
-      parentContainer.insertBefore(buttonElement, mapElement)
-      $(filterElement).toggleClass("fullscreen-filters")
-      $(buttonElement).toggleClass("fullscreen-filters")
-  }
-}
-
-/* END Add filters on fullscreen */
 
 const createContinentMarkers = c_data => {
+
   // Remove old popups
   if (window["continents_popups"]){
       window["continents_popups"].forEach(popup => {
@@ -288,85 +220,93 @@ const createCountriesLayers = data => {
 }
 
 /* PROCESS DATA */
-const createDataObject = (instruments_data) => {
-  const c_data = {
-    pays: [],
-    continents: {},
-    count_by_type: {},
-    raw_data: instruments_data,
-    convert_iso_name: {},
-  };
-  // Group instruments_data by Continent
-  instruments_data.forEach((item) => {
-    const continent = item.Continent || "unknown";
-    c_data.continents[continent] = c_data.continents[continent] || {
-      count: 0,
-      name_en: window.continent_infos[continent].name_en,
-      name: continent,
-      latlng: window.continent_infos[continent].latlng,
-      zoom_level: window.continent_infos[continent].zoom_level,
-      liste_pays: [],
-      notices: {},
-    };
+const createDataObject = instruments_data => {
+  // Get number by continent 
+  const c_data = { "pays" : [], "continents" : {}, "count_by_type" : {}, "raw_data" : instruments_data, "convert_iso_name" : {}}
 
-    const continentData = c_data.continents[continent];
+  const continents = [...new Set(instruments_data.map(item => item.Continent))]
+  continents.map(continent => { 
+      if (continent == ""){ continent = "unknown"}
+      c_data.continents[continent] = { 
+          "count" : 0, 
+          "name_en" : window.continent_infos[continent].name_en,
+          "name" : continent,
+          "latlng" : window.continent_infos[continent].latlng, 
+          "zoom_level": window.continent_infos[continent].zoom_level } })
 
-    continentData.count += 1;
-    if (!continentData.liste_pays.includes(item["Code ISO-2"])) {
-      continentData.liste_pays.push(item["Code ISO-2"]);
-    }
+  window["object_type"].map(type => {
+      c_data.count_by_type[type.label] = 0
+  })
 
-    const countryData = continentData.notices[item["Code ISO-2"]] || {
-      count: 0,
-      cities: {},
-    };
+  instruments_data.map(item => {
+      if (item.Continent == ""){ item.Continent = "unknown"}
+      // Décompte des notices par continent
+      c_data.continents[item.Continent].count = c_data.continents[item.Continent].count ? c_data.continents[item.Continent].count + 1 : 1
+      
+      // Liste des pays par continents
+      if (typeof c_data.continents[item.Continent]["liste_pays"] == 'undefined') {
+          c_data.continents[item.Continent]["liste_pays"] = []
+      }
 
-    countryData.count += 1;
+      if(!c_data.continents[item.Continent]["liste_pays"].includes(item["Code ISO-2"])){
+          c_data.continents[item.Continent].liste_pays.push(item["Code ISO-2"])
+      }
+      
+      // Liste des notices par continents par pays
+      if (typeof c_data.continents[item.Continent]["notices"] == 'undefined') {
+          c_data.continents[item.Continent]["notices"] = []
+      }
 
-    const cityData =
-      countryData.cities[item.Ville] || {
-        count: 0,
-        notices: [],
-      };
+      if (typeof c_data.continents[item.Continent]["notices"][item["Code ISO-2"]] == 'undefined') {
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]] = {}
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]]["count"] = 0
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"] = []
+      }
+      if (typeof c_data.continents[item.Continent]["notices"][item["Code ISO-2"]]["cities"][item.Ville] == 'undefined') {
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville] = {}
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville]["count"] = 0
+          c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville]["notices"] = []
+      }
 
-    cityData.count += 1;
-    cityData.notices.push(item);
+      //c_data.continents[item.Continent].notices[item["Code ISO-2"]].push(item)
+      c_data.continents[item.Continent].notices[item["Code ISO-2"]]["count"] = ( c_data.continents[item.Continent].notices[item["Code ISO-2"]]["count"] || 0) + 1 
+      c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville]["count"] = ( c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville]["count"] || 0) + 1 
+      c_data.continents[item.Continent].notices[item["Code ISO-2"]]["cities"][item.Ville]["notices"].push(item)
 
-    countryData.cities[item.Ville] = cityData;
-    continentData.notices[item["Code ISO-2"]] = countryData;
+      // Liste totale des pays
+      if(!c_data.pays.includes(item["Code ISO-2"])){
+          c_data.pays.push(item["Code ISO-2"])
+      }
 
-    if (!c_data.pays.includes(item["Code ISO-2"])) {
-      c_data.pays.push(item["Code ISO-2"]);
-    }
+      // Coreespondance code / nom pays
+      c_data.convert_iso_name[item["Code ISO-2"]] = item["Pays"]
 
-    c_data.convert_iso_name[item["Code ISO-2"]] = item["Pays"];
-
-    c_data.count_by_type[item["Type d'objet"]] =
-      (c_data.count_by_type[item["Type d'objet"]] || 0) + 1;
-  });
-  return c_data;
-};
+      c_data.count_by_type[item["Type d'objet"]] += 1      
+  })
+  console.log(c_data)
+  return c_data
+}
 
 
 /* MAP CONFIG */
 
 const calculateCenterGPS = coordinates => {
+  if (coordinates.length === 0) {
+    return null
+  }
 
-  if (!coordinates.length) return null;
+  var totalLat = 0
+  var totalLon = 0
 
-  let totalLat = 0;
-  let totalLon = 0;
+  for (var i = 0; i < coordinates.length; i++) {
+    totalLat += coordinates[i][0]
+    totalLon += coordinates[i][1]
+  }
 
-  coordinates.forEach(coord => {
-    totalLat += coord[0];
-    totalLon += coord[1]; 
-  });
+  var centerLat = totalLat / coordinates.length
+  var centerLon = totalLon / coordinates.length
 
-  return [
-    totalLat / coordinates.length,
-    totalLon / coordinates.length
-  ];
-
+  return [centerLat, centerLon]
 }
 
 const normalize_string = str => {
@@ -428,6 +368,7 @@ const hoverCountryEffect = (e, opacity) => {
   // Get name depending on DOM element
   var continent_name = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent")
   let svg_countries = []
+
   if (e.layerID){
     var path = `path.${e.layerID.toLowerCase()}`
     if($(path).length == 0 ) { return }
@@ -436,7 +377,7 @@ const hoverCountryEffect = (e, opacity) => {
     svg_countries.push(Array.from(element))
   }
   else{
-    window.current_dataset.pays.map(country => {
+    window["c_data"].pays.map(country => {
       if (country === ""){ return }
 
       var path = `path.${continent_name.toLowerCase()}.${country.toLowerCase()}`
@@ -503,6 +444,7 @@ const createMarkersNeighbors = (neighbor, bounds=false) => {
 }
 /* Marqueurs des Pays */
 const createMarkersCountry = (continent_obj, bounds=false) => {
+
   // Harmonize data
   var countries_to_display = continent_obj.notices
   countries_to_display =[... Object.keys(countries_to_display).map(key => {return {"code":key, "obj":countries_to_display[key]}})]
@@ -520,50 +462,6 @@ const createMarkersCountry = (continent_obj, bounds=false) => {
     }
   })
 
-  countries_cluster.on('clustermouseover', function(event) {
-    getHoverCountryCluster(event, 0.6)
-
-  })
-  countries_cluster.on('clustermouseout', function(event) {
-    getHoverCountryCluster(event, 0)
-
-  })
-  function getHoverCountryCluster(event, opacity){
-    var selected_countries = []
-      
-    var markers = event.layer._markers
-    if (markers){
-      getMarkersIds(markers, selected_countries)
-    }
-
-    var childClusters = event.layer.options.icon._childClusters
-    if(childClusters){
-      childClusters.map(cluster => {
-        let markers = cluster._markers
-        if (markers){
-          getMarkersIds(markers, selected_countries)
-        }
-      })
-    }
-    
-    function getMarkersIds(markers, selected_countries){
-      markers.map(marker => { 
-        let id = $(marker.options.icon.options.html)
-        if (id.attr("id")) { 
-          selected_countries.push(id.attr("id").replace("glob-", ""))
-        }
-      })
-    }
-    
-    selected_countries.map(country_code =>{
-      window.countries_layers.map(layers => { 
-        layers.eachLayer(layer => {
-          if(layer.feature.properties.ISO_A2_EH != country_code){ return }
-          hoverCountryEffect(layer, opacity)
-        })
-      })
-    })
-  }
 
   countries_to_display.map(country => {
     var topo = window["topojson_data"].filter(item => {return item.ISO_A2_EH == country.code })[0]
@@ -599,8 +497,8 @@ const createMarkersCountry = (continent_obj, bounds=false) => {
   if(unknown_countries){
     let unknown_countries_notices = unknown_countries.obj.cities[""].notices
     let continent_infos = window.continent_infos[unknown_countries_notices[0].Continent]
+  
     var html = `<div class="country-marker unknown">
-                  <p class="continent_unknown_country">${continent_infos.norm_name} : </p>
                   <p>Sans Localisation</p><p>${unknown_countries.obj.count} Objet(s)</p>
                 </div>`
                 
@@ -628,7 +526,6 @@ const cluster_icon = cluster => {
     temp.push(country)
     let regex = /<[^>]*>(\d+)\s*[^<]*<\/[^>]*>/
     let number = country.options.icon.options.html.match(regex)
-    //console.log(country.options.icon.options)
     if (number) { count += parseInt(number[1]) }
   })
 
@@ -656,7 +553,7 @@ const createSingleMarker = (latlng, icon, notices = false) => {
         // Construct self culster
         var layer_id = getSelfLayer(e.target)
         if (layer_id) { 
-          createCitiesMarkers(layer_id, window.current_dataset) 
+          createCitiesMarkers(layer_id) 
         } 
         else{
           marker.bindPopup(createMarkerPopup(notices)).openPopup();
@@ -735,10 +632,10 @@ const onEachTopojson = (features, layer) => {
   layer.on({
     click: (e) => {
       // Vérifie la présence d'instrument dans le pays
-      if(!window.current_dataset.pays.includes(layer.layerID)){ return }
+      if(!window["c_data"].pays.includes(layer.layerID)){ return }
       if(L.markerClusterGroup == undefined) { return }
-      if((map.getZoom() >= 4) && (layer.has_markers == true)) { return }
 
+      if((map.getZoom() >= 4) && (layer.has_markers == true)) { return }
       window.continents_popups.forEach(popup => { map.closePopup(popup) })
 
       var country_bounds =  e.target._bounds
@@ -747,27 +644,18 @@ const onEachTopojson = (features, layer) => {
       var neighbor_list = getNeighbor(e.target)
 
       createMarkersNeighbors(neighbor_list, e.target._bounds)
-      createCitiesMarkers(e.target, window.current_dataset)
-      
-      selectizeItem[0].selectize.setValue(layer.layerID)
-      selectizeItem[0].selectize.on("change", e => {
-        console.log("change")
-      })
-
-      var path = `path.${layer.layerID.toLowerCase()}`
-      if($(path).length == 0 ) { return }
-      $("path.selected").removeClass("selected")
-      $(path).toggleClass("selected")
-     } 
+      createCitiesMarkers(e.target)
+    } 
   })
   layer.on( "mouseover", e => { 
 
     // Vérifie la présence d'instrument dans le pays
-    if(!window.current_dataset.pays.includes(layer.layerID)){ return }
-    createTooltipName(e) 
+    if(!window["c_data"].pays.includes(layer.layerID)){ return }
+
     if(layer.has_markers == true) { return }
     $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
     $(e.target._path).css({ opacity: 0.6, fillOpacity: 0.6 })
+    createTooltipName(e) 
   })
 
   layer.on( "mouseout", e => { 
@@ -778,17 +666,8 @@ const onEachTopojson = (features, layer) => {
 }
 
 const createTooltipName = e => {
-
-  // Create an array of all the neighbors id
-  var neighbor_id = []
-  Object.keys(window.country_markers._layers).map( leaflet_id => {
-    neighbor_id.push($(window.country_markers._layers[leaflet_id].options.icon.options.html).attr("id"))
-  })
-
   $("#tooltip").remove()
-
-  if(neighbor_id.includes(e.target.feature.properties.ISO_A2_EH)){ return }
-
+  if(map.getZoom() >= 4) { return }
   var name_fr = e.target.feature.properties.NAME_FR
   var name_natve = e.target.feature.properties.name_native
   
@@ -801,23 +680,21 @@ const createTooltipName = e => {
   $("#tooltip").css("top", `${e.originalEvent.layerY - 80}px`)
 }
 
-const createCitiesMarkers = (layer, data = false) => {
+const createCitiesMarkers = layer => {
   if(layer == undefined) { return }
   resetclusters();
 
   layer["has_markers"] = true;
-    var cities = getNoticeData(layer, data);
 
-    var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
-  
-    var markers = L.markerClusterGroup({
-      showCoverageOnHover: false,
-      iconCreateFunction: function(cluster) {
-        return L.divIcon(cluster_icon(cluster))
-      }
-  }); 
+  var cities = getNoticeData(layer);
+  var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
 
-
+  var markers = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    iconCreateFunction: function(cluster) {
+      return L.divIcon(cluster_icon(cluster))
+    }
+  });
 
   var unknownObjectsCount = 0; // Compteur pour le nombre total d'objets pour les localisations inconnues
   var unknownCitiesNames = []; // Tableau pour stocker les noms des localisations inconnues
@@ -865,12 +742,11 @@ const createCitiesMarkers = (layer, data = false) => {
   markers_to_add.length == 1 ? map.addLayer(markers_to_add[0]) : markers_to_add.map(marker => { markers.addLayer(marker)})
 
   // Crée un seul marqueur pour toutes les localisations inconnues combinées
-  if ((unknownCitiesNames.length > 0) && cities[""] && (typeof cities[""].notices != "undefined")) {
+  if (unknownCitiesNames.length > 0) {
     var latlng = [parseFloat(country_center[0]), enableAnteMeridian(parseFloat(country_center[1]))];
 
     var html = `<div class="marker-cluster-medium">
                   <div class="city-marker unknown" data-ville="${normalize_string('?')}">
-                    <p>${cities[""].notices[0].Pays}</p>
                     <p>Sans Localisation</p>
                     <p>${unknownObjectsCount} Objet(s)</p>
                   </div>
@@ -931,13 +807,13 @@ const createMarkerPopup = notices => {
     var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0   
     var pos_y = 0 + rayon / 1.5 * Math.sin(angle)
     angle += angle_unit
+
     var cat_notices = notices.filter(notice => { return  notice["Type d'objet"] == cat})
-    var cat_name_pluriel = window.object_type.filter(obj => { return obj.label == cat})[0].label_pluriel
 
     let button_cat = document.createElement("button")
     button_cat.setAttribute("class", `cat_button ${normalize_string(cat).replace("'", "_")}`)
     button_cat.setAttribute("style", `transform: translate(${pos_x}px, ${pos_y}px); transform-origin: 50% 50%;`)
-    button_cat.setAttribute("title", `Voir une sélection des ${cat_name_pluriel.replace("Oe","Œ")}`)
+    button_cat.setAttribute("title", "Voir une sélection des éléments")
 
     $(button_cat).on("click", function(e){
       createCartel(e, cat_notices)
@@ -956,20 +832,9 @@ const createMarkerPopup = notices => {
   city_container.setAttribute("style", `transform: translate(-54px, -9px); `)
   city_container.setAttribute("title", "Voir une sélection des éléments")
 
+
   var name_element = document.createElement("p")
-
-  if (notices[0].Ville == "") {
-    var textNode1 = document.createTextNode(notices[0].Pays);
-    var brNode = document.createElement('br');
-    var textNode2 = document.createTextNode('Sans localisation');
-
-    name_element.appendChild(textNode1);
-    name_element.appendChild(brNode);
-    name_element.appendChild(textNode2);
-  } else {
-      name_element.textContent = notices[0].Ville;
-  }
-  
+  name_element.textContent = notices[0].Ville == "" ? `Sans localisation` : notices[0].Ville
   city_container.appendChild(name_element)
 
   var total_number = document.createElement("p")
@@ -986,24 +851,27 @@ const createMarkerPopup = notices => {
 
 }
 
-const getNoticeData = (layer, data) => {
+const getNoticeData = layer => {
   // Get french name of continent
   let continent_fr = Object.keys(window.continent_infos).filter(key => {
     return window.continent_infos[key].name_en == layer.feature.properties.CONTINENT
   })[0]
 
-  // Get notices data for country by cities or data pass as parameters
-  if (data){
-    var cities = data.continents[continent_fr].notices[layer.layerID].cities
-  }
-  else{
-    var cities = window.current_dataset.continents[continent_fr].notices[layer.layerID].cities
-  }
- 
-  return cities
-
+  // Get notices data for country by cities
+  var continent = window["c_data"].continents[continent_fr] 
+  return continent.notices[layer.layerID].cities
 }
 
+const randomizeCoord = (country_center, superficie) => {
+  var fraction = 0.1
+  var degFactor = 0.555
+  var section = Math.sqrt(superficie / Math.PI) * fraction
+  var amplitude = section / degFactor * fraction
+  return [
+    parseFloat(country_center[0]) + amplitude * (Math.random() * 2 - 1) / 4,
+    enableAnteMeridian(parseFloat(country_center[1])) + amplitude * (Math.random() * 2 - 1) / 4
+  ]
+}
 const getNeighbor = country => {
 
   if (country.feature.properties.borders_iso_a2 === null) { return }
@@ -1021,9 +889,9 @@ const getNeighbor = country => {
 
       try{
         // Check if there's some notice
-        if (typeof window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
+        if (typeof window.c_data.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
 
-        neighbor_obj[country.ISO_A2_EH] = window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH]
+        neighbor_obj[country.ISO_A2_EH] = window.c_data.continents[continent_fr[0]].notices[country.ISO_A2_EH]
         neighbor_obj[country.ISO_A2_EH]["LABEL_X"] = country.LABEL_X
         neighbor_obj[country.ISO_A2_EH]["LABEL_Y"] = country.LABEL_Y
         neighbor_obj[country.ISO_A2_EH]["NAME_FR"] = country.NAME_FR
@@ -1051,26 +919,29 @@ const resetMarkers = () => {
 }
 const resetclusters = () => {
 
-  // Remove selected country
-  $("path.selected").removeClass("selected")
+  if (window.clusters_cities_cluster != undefined) {
+    map.removeLayer(window.clusters_cities_cluster)
+  }
 
-  const layersToRemove = [
-    window.clusters_cities_cluster,
-    window.solo_city_cluster, 
-    window.countries_cluster,
-    window.clusters_cities_markers,
-    window.unknown_marker
-  ];
+  if (window.solo_city_cluster != undefined) {
+    window.solo_city_cluster.map(marker => {
+      map.removeLayer(marker)
+    })  
+  }
 
-  layersToRemove.forEach(layer => {
-    if(layer) {
-      if(Array.isArray(layer)) {
-        layer.forEach(marker => map.removeLayer(marker));
-      } else {
-        map.removeLayer(layer);
-      }
-    }
-  });
+  if (window.countries_cluster != undefined) {
+    window.countries_cluster.map(cluster=> {
+      if (map.hasLayer(cluster)){ map.removeLayer(cluster) }
+    })
+  }
+
+  if (window.clusters_cities_markers != undefined) { 
+    map.removeLayer(window.clusters_cities_markers)
+  }
+
+  if (window.unknown_marker != undefined) { 
+    map.removeLayer(window.unknown_marker)
+  }
 
 }
 
@@ -1147,7 +1018,7 @@ const createCartel = (e, notices) => {
 
       let title = document.createElement("h3")
           title.setAttribute("class", "notice-title")
-          title.textContent = notice["Titre"].length > 30 ? notice["Titre"].substring(0, 50) + "..." : notice["Titre"]
+          title.textContent = notice["Titre"].length > 30 ? notice["Titre"].substring(0, 30) + "..." : notice["Titre"]
           title_section.appendChild(title)
 
       let details_section = document.createElement("div")
@@ -1159,23 +1030,25 @@ const createCartel = (e, notices) => {
       let hierarchy_content = [notice["Instrument niveau 1"], notice["Instrument niveau 2"], notice["Instrument niveau 3"]]
       hierarchy_content.map(term => {
           if (term == "") {return}
-          /* CL 06/11/23 Désactivation du bouton de recherche dans la hiérarchie */
-          let button = document.createElement("p")
-          button.setAttribute("class", "text-hierarchy")
-
-          //let button = document.createElement("button")
-          //button.setAttribute("class", "text-btn")
-          //button.setAttribute("type", "button")
-          //button.setAttribute("data-search", normalize_string(term).replace("'", "_"))
+          let button = document.createElement("button")
+          button.setAttribute("class", "text-btn")
+          button.setAttribute("type", "button")
+          button.setAttribute("data-search", normalize_string(term).replace("'", "_"))
           button.textContent = term
-          //$(button).click(function(){
-          //    document.getElementById("seeker").value = `"${term}"`
-          //    $("#search").click()
-          //})
+          $(button).click(function(){
+              document.getElementById("seeker").value = `"${term}"`
+              $("#search").click()
+          })
           hierarchy.appendChild(button)
           
       })
       details_section.appendChild(hierarchy)
+
+
+      let date = document.createElement("h4")
+          date.setAttribute("class", "notice-date")
+          date.textContent = "" // ATT data
+          details_section.appendChild(date)
 
       let author = document.createElement("h3")
           author.setAttribute("class", "author")
@@ -1197,20 +1070,6 @@ const createCartel = (e, notices) => {
           text_section.appendChild(collection)
       }
 
-      let lieu_creation = document.createElement("p")
-      lieu_creation.setAttribute("class", "lieu-creation")
-      lieu_creation.textContent = "Lieu de création : " + (notice["Ville"] != "" ? notice["Ville"] + ", " : "") 
-                                                        + (notice["Pays"] != "" ? notice["Pays"] + ", " : "")
-                                                        + (notice["Continent"] != "" ? notice["Continent"] : "")
-      text_section.appendChild(lieu_creation)
-
-
-      if (notice["Date de création"]){
-        let date_creation = document.createElement("p")
-        date_creation.setAttribute("class", "lieu-creation")
-        date_creation.textContent = "Date de création : " + notice["Date de création"]
-        text_section.appendChild(date_creation)
-      }
 
       /* Conteneur des boutons de liens et d'écoute */
       var link_container = document.createElement("div")
@@ -1227,16 +1086,15 @@ const createCartel = (e, notices) => {
           //let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${city}#/Search/(query:(${facet}',ForceSearch:!t,InitialSearch:!f,Page:0,PageRange:3,QueryString:${city},ResultSize:50,ScenarioCode:MUSEE,ScenarioDisplayMode:display-mosaic,SearchGridFieldsShownOnResultsDTO:!(),SearchLabel:'',SearchTerms:${city},SortField:!n,SortOrder:0,TemplateParams:(Scenario:'',Scope:MUSEE,Size:!n,Source:'',Support:'',UseCompact:!f),UseSpellChecking:!n),sst:4)`
 
           /* 14/09/2023 test nouvelle query */
-          //let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=+${category[0].name_system}+${city}`
+          let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=+${category[0].name_system}+${city}`
 
-          /* 02/10/2023 CL Désacivation du bouton dans l'attente d'une query sans bruit */
-          /* let category_search_link = document.createElement("a")
+          let category_search_link = document.createElement("a")
                   category_search_link.setAttribute("class", "btn btn-default btn-link")
                   category_search_link.setAttribute("href", query_category_link)
                   category_search_link.setAttribute("alt", "Voir le résultat de recherche (nouvel onglet)")
                   category_search_link.setAttribute("target", "_blank")
-                  category_search_link.textContent = "Voir la sélection"
-                  link_container.appendChild(category_search_link) */
+                  category_search_link.textContent = "Tout voir"
+                  link_container.appendChild(category_search_link)
       }
 
       // Construction de l'url de la notice à partir du nom et du numéro de notice (formaté avec leading 0)
@@ -1308,7 +1166,7 @@ const createCloseButton = () => {
       //$(".popup-container")[0].setAttribute("style","pointer-events: none;")
   })
 
-  $("#cartel-container")[0].appendChild(button)
+  $(".popup-container")[0].appendChild(button)
 }
 const shuffleArray = array => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -1405,6 +1263,13 @@ const filtersActions = () => {
 /* populateFilters met à jour les informations sur les filtres. */
 /* ********************************************************************************************** */
 
+/* Générer un set reccord et un set norm, switch set on checkbox */
+/* Générer un objet avec méthodes pour épurer code variables globales */
+  window["saved_initial_data"] = window.c_data
+  window["current_select_data"] = window.c_data
+  window["type_data"] = window.c_data
+  window["record_data"] = window.c_data
+
   // Create first display of localisation
   populateLocalisation(window.c_data)
 
@@ -1412,106 +1277,128 @@ const filtersActions = () => {
   $("#with-records").change(e => {
 
       window.continents_popups.forEach(popup => { map.removeLayer(popup) })
-      let data_to_use = e.target.checked ? window.all_recorded_instruments : window.saved_initial_data
-      window.current_dataset = data_to_use
 
-      populatefilters(data_to_use)
-      createContinentMarkers(data_to_use)
-      populateLocalisation(data_to_use)  
-      filterSearch()
-      map.setView(window.initial_view.latlng, window.initial_view.zoom);
+      if (e.target.checked){ 
+          
+          let filtered_data = window.type_data.raw_data.filter(notice => { return notice["URL Enregistrement"] != ""})
+
+          let processed_filtered_data = createDataObject(filtered_data)
+
+          window.c_data = processed_filtered_data // update markers
+          window.record_data = processed_filtered_data // record data
+
+          populatefilters(processed_filtered_data)
+          createContinentMarkers(processed_filtered_data)
+          populateLocalisation(processed_filtered_data)
+      }
+      else{
+
+          window.c_data = window.current_select_data
+          window.record_data = window.current_select_data
+          populatefilters(window.c_data)
+          createContinentMarkers(window.c_data)
+          populateLocalisation(window.c_data)
+      }
+      
   })
 
   /* Filter by Type */
   $("#types-filter").change(e => {
 
-      // Remove all popup
+      /* Si clic sur catégories et click reccorded,  grisé se met à jour + all cat ne se met pas a jour*/
       window.continents_popups.forEach(popup => { map.removeLayer(popup) })
 
-      // Save current state
-      window.data_before_filtering = window.current_dataset
-
       let selected_type = document.querySelector('input[name="types"]:checked').value
-      
+
       if (selected_type == "all"){
-          var processed_filtered_data = window.data_before_filtering
+          var processed_filtered_data = window.record_data
+          populateLocalisation(processed_filtered_data)
       }
       else{
           
-        let filtered_data = window.current_dataset.raw_data.filter(notice => { 
-            return normalize_string(notice["Type d'objet"]).replace(/'/gm, "_") == selected_type
-        })
-        var processed_filtered_data = createDataObject(filtered_data)
-
-      }
-      var country_code = selectizeItem[0].selectize.getValue()
-      if (country_code.length == 2){
-        window["countries_layers"].map(obj => {
-          Object.keys(obj._layers).filter(key => {
-              if (( obj._layers[key].layerID != country_code) || (obj._layers[key].layerID == undefined)) { return }
-              createCitiesMarkers(obj._layers[key], processed_filtered_data)
+          let filtered_data = window.record_data.raw_data.filter(notice => { 
+              return normalize_string(notice["Type d'objet"]).replace(/'/gm, "_") == selected_type
           })
-      })
-        
+
+          let notices_to_check = filtered_data.concat(window.record_data.raw_data)
+          let notices_to_keep = notices_to_check.filter((a, i, aa) => aa.indexOf(a) === i && aa.lastIndexOf(a) !== i)
+
+
+          var processed_filtered_data = createDataObject(notices_to_keep)
+
+          window.type_data = processed_filtered_data
       }
-      else {
-        createContinentMarkers(processed_filtered_data)
-      }
+
+
+      //window.prev_filter_data = filtered_data
       
+      window.c_data = processed_filtered_data
+      createContinentMarkers(processed_filtered_data)
+      populateLocalisation(processed_filtered_data)
+      map.setView(window.initial_view.latlng, window.initial_view.zoom);
 
   })
 
   /* Filter Localisation */
-  $(document).on('mousedown', '.selectize-dropdown-content [data-value]', function(e) {
-    var value = $(this).attr('data-value');
-    filterLocHandler(value)
-  });
-  /* Filter Localisation */
   window.selectizeItem.on('change', function() {
-    var value = selectizeItem[0].selectize.getValue();
-    filterLocHandler(value)
- 
+
+      /* Fonctionne à la première impression de l'écran, mais plus après utilisation de filtres (destroy and create problem ?) */
+
+      var value = selectizeItem[0].selectize.getValue();
+
+      // if value is a country
+      if (value.length == 2){
+          window["countries_layers"].map(obj => {
+              Object.keys(obj._layers).filter(key => {
+                  if (( obj._layers[key].layerID != value) || (obj._layers[key].layerID == undefined)) { return }
+                  obj._layers[key].fire("click")
+              })
+          })
+      }
+
+      // else value is a continent
+      else{
+          let continent_infos = Object.keys(window.continent_infos).map(key => { 
+              let norm_continent = normalize_string(window.continent_infos[key].norm_name)
+              let norm_value =  normalize_string(value).replace(/^0/, "")
+              if (norm_continent == norm_value) {
+                  return window.continent_infos[key]
+              }
+          }).filter( Boolean )[0]
+          if (! continent_infos) { return }
+          window.continents_popups.map(popup => { 
+              let continent = popup._content.attributes["data-continent"].value
+              if (normalize_string(continent) == normalize_string(continent_infos.name_en)){
+                  map.setView(window.initial_view.latlng, window.initial_view.zoom);
+              }
+          })
+      }
   });
-
-  function filterLocHandler(value){
-    if (value != "" && value.length != 0){
-      window.c_data = window.data_before_filtering
-      var filtered_data = window.current_dataset.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
-      let processed_filtered_data = createDataObject(filtered_data)
-      populatefilters(processed_filtered_data) 
-      window.c_data = processed_filtered_data
-    }
-
-
-    // if value is a country
-    if (value.length == 2){
-        window["countries_layers"].map(obj => {
-            Object.keys(obj._layers).filter(key => {
-                if (( obj._layers[key].layerID != value) || (obj._layers[key].layerID == undefined)) { return }
-                obj._layers[key].fire("click")
-            })
-        })
-    }
-
-    // else value is a continent
-    else{
-        let continent_infos = Object.keys(window.continent_infos).map(key => { 
-            let norm_continent = normalize_string(window.continent_infos[key].norm_name)
-            let norm_value =  normalize_string(value).replace(/^0/, "")
-            if (norm_continent == norm_value) {
-                return window.continent_infos[key]
-            }
-        }).filter( Boolean )[0]
-        if (! continent_infos) { return }
-
-    }
-  }
-
   /* Search Plain text */
   searchBox()
 
+  /* Reset Filters */
+  $("#reset-button").on("click", e => {
 
+      // Reset data
+      window.c_data = window.saved_initial_data
+      window.type_data = window.c_data
+      window.record_data = window.c_data
 
+      // Reset recorded
+      $("#with-records").prop( "checked", false )
+
+      // Reset Location
+      window.selectizeItem[0].selectize.clear();
+
+      // Reset Types
+      $("#all-types").prop( "checked", true )
+
+      // Reset Filters Values and map markers
+      populatefilters(window.c_data)
+      createContinentMarkers(window.c_data)
+      map.setView(window.initial_view.latlng, window.initial_view.zoom);
+  })
 
   /* Access button */
   $("#access-button").on("click", e => {
@@ -1535,98 +1422,11 @@ const filtersActions = () => {
   })
 
 }
-const getLayerByID = iso2 => {
-  let layer = window["countries_layers"].map(obj => {
-        Object.keys(obj._layers).filter(key => {
-            if (( obj._layers[key].layerID != iso2) || (obj._layers[key].layerID == undefined)) { return }
-            return obj._layers[key]
-        })
-    }).filter( Boolean )[0]
-    return layer
-}
-
-/* Reset Filters Button*/
-/* const createResetButton = () => {
-
-  let reset_button = document.createElement("button")
-  reset_button.id= "reset-button"
-  reset_button.setAttribute("class", "btn btn-default")
-  reset_button.setAttribute("type", "button")
-  reset_button.textContent = "Réinitialiser la carte"
-
-  $(reset_button).on("click", e => {
-
-    // Reset data
-    window.c_data = window.saved_initial_data
-    window.type_data = window.c_data
-    window.data_before_filtering = window.c_data
-
-    // Reset recorded
-    $("#with-records").prop( "checked", false )
-
-    // Reset Location
-    window.selectizeItem[0].selectize.clear();
-
-    // Reset Types
-    $("#all-types").prop( "checked", true )
-
-    // Reset input
-    document.getElementById("seeker").value = ""
-
-    // Reset Filters Values and map markers
-    populatefilters(window.c_data)
-    createContinentMarkers(window.c_data)
-    map.setView(window.initial_view.latlng, window.initial_view.zoom);
-  })
-  document.getElementById("mapMusee").appendChild(reset_button)
-  
-  //mapMusee(window["data"])
-  //console.log(window["map"])
-  //console.log(window["data"]) 
-}  */
-function createResetButton(map) {
-
-  // Création d'un bouton réinitialisant la carte
-  var resetButton = document.createElement("button")
-  resetButton.id= "reset-button"
-  resetButton.setAttribute("class", "leaflet-bar leaflet-control")
-  resetButton.setAttribute("type", "button")
-  resetButton.setAttribute("title", "Réinitialiser la carte")
-
-  let img = new DOMParser().parseFromString(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328.32 335.24">
-          <path d="m272.68,41.69c.7-1.2,1.18-2.62,2.13-3.58,8.06-8.17,16.25-16.22,24.3-24.4,5.24-5.33,11.3-7.22,18.38-4.58,6.45,2.41,9.87,8.12,9.88,16.08.03,28.45.04,56.89,0,85.34-.02,10.53-6.48,17.03-17.06,17.05-28.33.07-56.65.05-84.98,0-8.13-.01-13.87-3.55-16.35-10.11-2.69-7.13-.63-13.12,4.68-18.33,8.01-7.85,15.92-15.82,24.7-24.56-8.3-5.21-15.85-10.72-24.06-14.95-35.34-18.23-70.78-15.72-104.47,3.32-42.34,23.92-62.85,61.49-61.73,110.1,1.25,54.33,43.92,102.97,97.48,112.19,59.06,10.17,113.16-20.46,134.68-76.25,4.25-11.02,11.61-14.93,23.31-12.42,4.14.89,8.32,1.63,12.44,2.59,9.48,2.2,14.53,10.57,11.35,19.58-22.19,62.8-65.85,101.96-131.34,113.81-84.9,15.36-166.14-36.91-189.75-119.88C-19.69,121.46,37.59,25.09,129.83,4.28c51.97-11.73,97.68,1,138.54,33.99.87.7,1.74,1.42,2.62,2.11.18.14.44.2.66.29.34.34.69.69,1.03,1.03Z"/>
-      </svg>`,
-      'application/xml');
-
-  resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
-
-  $(resetButton).on("click", e => {
-    let recordedCheckbox = document.getElementById("with-records")
-    recordedCheckbox.checked = false
-    document.getElementById("seeker").value = ""
-
-    if (window.map == undefined) { return }
-    window.map.off()
-    window.map.remove()
-    window.map = undefined
-    
-    mapMusee(window["data"])
-  })
-
-  // Ajoutez le bouton à la carte
-  var resetControl = L.control({ position: 'topleft' });
-  resetControl.onAdd = function() {
-      return resetButton;
-  };
-  resetControl.addTo(window["map"]);
-
-} 
 
 const displayResultNumber = data => {
   var count = 0
   Object.keys(data.continents).map(continent => { count += data.continents[continent].count })
-  document.getElementById("nb-items").textContent = `${count} Objet(s)`
+  document.getElementById("nb-items").textContent = `${count} Object(s)`
 }
 
 const populateLocalisation = data => {
@@ -1683,29 +1483,12 @@ const createSelectizeDOM = data => {
       array_continent.push(array_options)
 
   })
-  array_continent.unshift([{
-    "id" : "empty",
-    "name_fr" : "Localisation",
-    "name_native" : "",
-    "count" : "",
-  }])
   return array_continent
 }
 
 const selectizeOptionDOM = (item, escape) => {
-
-  if (item.name_fr[0] == "0"){
-    var name_fr = "<b>" + escape(item.name_fr).replace(/^0|^_/, "") + "</b>"
-  }
-  else if (item.name_fr == "empty"){
-    var name_fr = escape(item.name_fr)
-  }
-  else {
-    var name_fr = escape(item.name_fr).replace(/^0|^_/, "")
-  }
-  
   let html = `<div class="option">
-                  <span class="name_fr">${item.name_fr ? name_fr : " "}</span>
+                  <span class="name_fr">${item.name_fr ? item.name_fr[0] == "0" ? "<b>" + escape(item.name_fr).replace(/^0|^_/, "") + "</b>" : escape(item.name_fr).replace(/^0|^_/, "") : " "}</span>
                   <span class="name_native">${item.name_native ? "<i>(" + escape(item.name_native) + ")</i>" : " "}</span>
                   <span class="count">${item.count ? escape(item.count) : ""}</span>
               </div>`
@@ -1757,7 +1540,7 @@ const populateObjectTypes = data => {
 
       let label = document.createElement("label")
       label.setAttribute("for", type.type)
-      label.textContent = type.label_pluriel.replace("Oe", "Œ")
+      label.textContent = type.label
       radio_container.appendChild(label)
 
       let input = document.createElement("input")
@@ -1818,16 +1601,30 @@ const searchBox = () => {
   }
 
   $('.search-bar').submit(function(e) { e.preventDefault() })
-  $('#search').click(function(e) { filterSearch() })
+  $('#search').click(function(e) {
+
+      var filterQuery = filterSearch()
+      var processed_filtered_data = createDataObject(filterQuery.filtered)
+
+      // Set filtered data for other filters
+      window.c_data = processed_filtered_data
+      window.current_select_data = processed_filtered_data
+      window.type_data = processed_filtered_data
+      window.record_data = processed_filtered_data
+
+      // Unset recorded instrument
+      document.getElementById("with-records").checked = false;
+
+      populatefilters(processed_filtered_data)
+      createContinentMarkers(processed_filtered_data)
+      map.setView(window.initial_view.latlng, window.initial_view.zoom);
+
+
+  })
 
 }
 const filterSearch = () => {
-
-  // Reset location
-  selectizeItem[0].selectize.setValue("empty")
-
-  let is_record_requested = document.getElementById("with-records").checked
-  const data = is_record_requested ? window.all_recorded_instruments.raw_data : window.saved_initial_data.raw_data
+  const data = window.saved_initial_data.raw_data
   var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
 
   // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
@@ -1841,15 +1638,14 @@ const filterSearch = () => {
       searchTerms.toLowerCase().split(' ').map(q => queryReg.push(`(?=.*${q})`))
   }
 
+  var filtered = []
+
   /* Data filter method */
   var filtered = []
 
   const filterIt = (arr, query) => {
       return arr.filter(obj => Object.keys(obj).some(key => {
-        if (key !== 'Enregistrement') {   
-            return new RegExp(query, "mgi").test(obj[key]);
-        }
-        return false;
+          return new RegExp(query, "mgi").test(obj[key])
       }))
   }
   queryReg.map(query => { 
@@ -1860,20 +1656,8 @@ const filterSearch = () => {
   if (queryReg.length > 1) {
       const findDuplicates = arr => arr.filter((item, index) => arr.indexOf(item) !== index)
       filtered = findDuplicates(filtered.flat())
-  } 
-
-  var filterQuery = { "filtered": filtered.flat(), "query": queryReg }
-  var processed_filtered_data = createDataObject(filterQuery.filtered)
-
-  // Set filtered data for other filters
-  window.current_dataset = processed_filtered_data
-  window.current_select_data = processed_filtered_data
-  window.type_data = processed_filtered_data
-  window.data_before_filtering = processed_filtered_data
-
-  populatefilters(processed_filtered_data)
-  createContinentMarkers(processed_filtered_data)
-  map.setView(window.initial_view.latlng, window.initial_view.zoom);
+  }
+  return { "filtered": filtered.flat(), "query": queryReg }
 }
 
 /* Tableau accessible Mise en attente sur une V2 */

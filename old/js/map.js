@@ -72,68 +72,10 @@ function get_data(promises) {
   }
 }
 
-// Vérification que tous les modules sont chargés
-/* function isLibrariesLoaded() {
-  return typeof L !== 'undefined' 
-      && typeof L.map === 'function'
-      && typeof L.markerClusterGroup === 'function'
-      && typeof pako !== 'undefined'
-} */
-/* function onLibrariesLoaded() {
-  var isLoaded = isLibrariesLoaded()
-  console.log(isLibrariesLoaded())
-  console.log(typeof L) 
-  console.log(typeof L.map)
-  console.log(typeof L.markerClusterGroup)
-  console.log(typeof pako) */
-  /* while(!isLoaded){
-    console.log('Tentative de chargement de Leaflet...');
-
-    setTimeout(function () {
-      isLoaded = isLibrariesLoaded();
-    }, 250);
-  } */
-/*   wait_for_data(promises)
- */
-  /* if (isLibrariesLoaded()) {
-    wait_for_data(promises)
-  } else {
-    // Rechargement de la page après 4 tentatives avec message d'erreur
-    if (attempt_count >= 4) { 
-      let message = document.createElement("p")
-      message.setAttribute("class", "reload-error")
-      message.textContent = "Nous rencontrons un problème, la page va être rechargée."
-      document.getElementById("mapMuseeContainer").appendChild(message)
-      setTimeout(function () {
-        location.reload() 
-      }, 1500); 
-    }
-
-    setTimeout(function () {
-      console.log('Tentative de chargement de Leaflet...');
-      onLibrariesLoaded();
-    }, 250);
-  } */
-/* } 
- */
 
 $(document).ready(function() {
   $(".loader").show()
   wait_for_data(promises);
-/*   loadScriptsReturnPromise(carte_instruments_musee)
-      .then(() => {
-          console.log("Toutes les bibliothèques sont chargées.");
-          console.log(typeof L);
-          console.log(typeof L.map);
-          console.log(typeof L.markerClusterGroup);
-          console.log(typeof pako);
-
-          var promises = [];
-          wait_for_data(promises);
-      })
-      .catch(error => {
-          console.error(error);
-      }); */
 });
 
 function mapMusee(data){
@@ -299,6 +241,10 @@ const createDataObject = (instruments_data) => {
   // Group instruments_data by Continent
   instruments_data.forEach((item) => {
     const continent = item.Continent || "unknown";
+
+    // Check who is unknown
+    if (continent == "unknown"){ console.log(item) }
+
     c_data.continents[continent] = c_data.continents[continent] || {
       count: 0,
       name_en: window.continent_infos[continent].name_en,
@@ -1177,6 +1123,12 @@ const createCartel = (e, notices) => {
       })
       details_section.appendChild(hierarchy)
 
+
+      let date = document.createElement("h4")
+          date.setAttribute("class", "notice-date")
+          date.textContent = notice["Date de création"]
+          details_section.appendChild(date)
+
       let author = document.createElement("h3")
           author.setAttribute("class", "author")
           author.textContent = notice["Facteur ou auteur"]
@@ -1204,13 +1156,15 @@ const createCartel = (e, notices) => {
                                                         + (notice["Continent"] != "" ? notice["Continent"] : "")
       text_section.appendChild(lieu_creation)
 
-
-      if (notice["Date de création"]){
+      if (notice["Date"]){
         let date_creation = document.createElement("p")
         date_creation.setAttribute("class", "lieu-creation")
-        date_creation.textContent = "Date de création : " + notice["Date de création"]
+        date_creation.textContent = "Date de création : " + notice["Date"]
         text_section.appendChild(date_creation)
       }
+
+
+
 
       /* Conteneur des boutons de liens et d'écoute */
       var link_container = document.createElement("div")

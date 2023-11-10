@@ -768,11 +768,6 @@ fieldset{
     margin: 0.5em 3px 1em 0;
     padding: 0;
 }
-#mapMusee .lieu-creation{
-    margin-bottom: 0.5em;
-    font-size: 1em;
-    font-weight: bold;
-}
 #mapMusee .text-hierarchy{
     font-size: 1em;
 }
