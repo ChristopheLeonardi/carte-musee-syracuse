@@ -33,7 +33,7 @@
             "disabled_icon": "img/nobg-document_ecrit.svg",
             "type": "document_ecrit",
             "label": "Document écrit",
-            "label_pluriel": "Documents écrit",
+            "label_pluriel": "Documents écrits",
             "cluster_multiple": false,
             "name_system" : "Document écrit"
         },

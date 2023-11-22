@@ -9,7 +9,10 @@
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
-
+/* ////////// CONTROLS ////////// */
+.leaflet-control-layers .leaflet-control-layers-toggle{
+    display: none;
+}
 h2, h3{
     text-transform: uppercase;
 }
@@ -342,6 +345,7 @@ fieldset{
     background-color: transparent;
     box-shadow: unset;
 }
+#mapMusee .leaflet-marker-icon.country-marker:not(.neighbor),
 #mapMusee .continent-marker:not(.neighbor),
 #mapMusee .city-marker,
 #mapMusee .city-center,

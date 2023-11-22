@@ -4,17 +4,17 @@
 var promises = []
 function wait_for_data(promises) {
     get_data(promises)
-    typeof window["data"] !== "undefined" ? mapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
+    typeof window["data"] !== "undefined" ? generalMapMusee(window["data"]) : setTimeout(wait_for_data, 250);   
 }
 
 function get_data(promises) {
   const controller = new AbortController();
   try {
     if (promises == undefined) { var promises = [] }
-
+    /* Test d'optimisation, charger directement fichier json sortedData */
     // Mettez à jour l'URL du fichier CSV compressé au format gzip
-    promises.push(
-      fetch('/ui/plug-in/integration/carte-instrument-musee/data/data-carte_2023-11-06.csv.gz')
+    /* promises.push(
+      fetch('/ui/plug-in/integration/carte-instrument-musee/data/data-carte2_2023-11-06.csv.gz')
         .then(response => {
           if (!response.ok) {
             throw new Error(`Erreur HTTP : ${response.status}`);
@@ -30,13 +30,16 @@ function get_data(promises) {
           //return d3.csvParse(inflatedData);
 
         })
-    );
+    ); */
 
     // Liste des URL des fichiers JSON gzip
     const jsonUrls = [
-      '/ui/plug-in/integration/carte-instrument-musee/data/amerique.json.gz',
-      '/ui/plug-in/integration/carte-instrument-musee/data/reste.json.gz',
+      '/ui/plug-in/integration/carte-instrument-musee/data/sortedData.json.gz',
+      //'/ui/plug-in/integration/carte-instrument-musee/data/amerique.json.gz',
+      //'/ui/plug-in/integration/carte-instrument-musee/data/reste.json.gz',
       '/ui/plug-in/integration/carte-instrument-musee/data/config.json.gz',
+      '/ui/plug-in/integration/carte-instrument-musee/data/countries_codes_and_coordinates.json.gz',
+      '/ui/plug-in/integration/carte-instrument-musee/data/output-topo.json.gz',
     ];
 
     // Utilisez une boucle pour charger et décompresser les fichiers JSON
@@ -72,627 +75,793 @@ function get_data(promises) {
   }
 }
 
-// Vérification que tous les modules sont chargés
-/* function isLibrariesLoaded() {
-  return typeof L !== 'undefined' 
-      && typeof L.map === 'function'
-      && typeof L.markerClusterGroup === 'function'
-      && typeof pako !== 'undefined'
-} */
-/* function onLibrariesLoaded() {
-  var isLoaded = isLibrariesLoaded()
-  console.log(isLibrariesLoaded())
-  console.log(typeof L) 
-  console.log(typeof L.map)
-  console.log(typeof L.markerClusterGroup)
-  console.log(typeof pako) */
-  /* while(!isLoaded){
-    console.log('Tentative de chargement de Leaflet...');
-
-    setTimeout(function () {
-      isLoaded = isLibrariesLoaded();
-    }, 250);
-  } */
-/*   wait_for_data(promises)
- */
-  /* if (isLibrariesLoaded()) {
-    wait_for_data(promises)
-  } else {
-    // Rechargement de la page après 4 tentatives avec message d'erreur
-    if (attempt_count >= 4) { 
-      let message = document.createElement("p")
-      message.setAttribute("class", "reload-error")
-      message.textContent = "Nous rencontrons un problème, la page va être rechargée."
-      document.getElementById("mapMuseeContainer").appendChild(message)
-      setTimeout(function () {
-        location.reload() 
-      }, 1500); 
-    }
-
-    setTimeout(function () {
-      console.log('Tentative de chargement de Leaflet...');
-      onLibrariesLoaded();
-    }, 250);
-  } */
-/* } 
- */
-
 $(document).ready(function() {
   $(".loader").show()
   wait_for_data(promises);
-/*   loadScriptsReturnPromise(carte_instruments_musee)
-      .then(() => {
-          console.log("Toutes les bibliothèques sont chargées.");
-          console.log(typeof L);
-          console.log(typeof L.map);
-          console.log(typeof L.markerClusterGroup);
-          console.log(typeof pako);
-
-          var promises = [];
-          wait_for_data(promises);
-      })
-      .catch(error => {
-          console.error(error);
-      }); */
+  
 });
 
-function mapMusee(data){
-  console.log(data)
-
-  const instruments_data = data[0]
-  let countries_data = [{ "data" : data[1], "name" : "amerique" },{ "data" : data[2], "name" : "reste" }]
-
-  window["initial_view"] = { latlng : [20, 155], zoom : 2 } // Default map view setting
-
-  window["continent_infos"]  = data[3].continents_infos
-  window["object_type"] = data[3].object_type
-  window["c_data"] = createDataObject(instruments_data) 
-  window["saved_initial_data"] = window.c_data
-  window["current_dataset"] = window.c_data
-  window["all_recorded_instruments"] = createDataObject(instruments_data.filter(notice => { return notice["URL Enregistrement"] != ""}))
-  window["current_select_data"] = window.c_data
-  window["type_data"] = window.c_data
-  window["data_before_filtering"] = window.c_data
-
-  /* Initialize Map */
-  const map = L.map('mapMusee', { 
-      fullscreenControl: true,
-      fullscreenControlOptions: {
-        position: 'topleft'
-      },
-      //worldCopyJump: true,
-      scrollWheelZoom: true, 
-      //maxBoundsViscosity: 0.8,
-      minZoom :  1.5,
-      maxZoom: 12,
-  }).setView(window.initial_view.latlng, window.initial_view.zoom);
-
-  window["map"] = map
-  //map.setMaxBounds([ [-65, -180], [180, 360] ])
-
-  L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map)
-
-  // Create markers for each continent
-  createContinentMarkers(window.saved_initial_data)
-
-  /* Create Countries layers */
-  window["countries_layers"] = []
-  window["topojson_data"] = []
-  
-  createCountriesLayers(countries_data)
-
-  // Remove Duplicate countries
-  window["topojson_data"] = removeDuplicateObject(window["topojson_data"].flat(), "ISO_A2_EH")
-  window["country_markers"] = L.layerGroup().addTo(map)
-
-
-  /* Reset map when reach primary zoom level */
-  map.on('moveend', function() {
-      if(map.getZoom() <= 2.5) {
-          window.continents_popups.forEach(popup => { map.openPopup(popup) })
-
-          resetMarkers()
-          resetclusters()
-      }
-
-  })
-
-  /* Center on popup when open */
-  map.on('popupopen', function(e) {
-      var px = map.project(e.target._popup._latlng); // find the pixel location on the map where the popup anchor is
-      px.y -= e.target._popup._container.clientHeight/2; // find the height of the popup container, divide by 2, subtract from the Y axis of marker location
-      map.panTo(map.unproject(px),{animate: true}); // pan to new center
-  });
-
-
-  /* Filters */
-  createOptionsLocalisation(window.saved_initial_data)
-  populatefilters(window.saved_initial_data)
-
-
-  $(".loader").hide();
-
-  filtersActions()
-
-  // Ouvrir et fermer le menu des filtres
-  $("#open-close-filter").click(e => {
-    $("#mapFilter, #open-close-filter, #mapMusee").toggleClass("open")
-    onkeyup = e => {
-      if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
-        $("#mapFilter, #open-close-filter").removeClass("open")
-      }
-    };
-  })
-
-  createResetButton()
-
-    
-  // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
-  document.addEventListener('fullscreenchange', onFullScreenChange);
-}
-
-/* Add filters on fullscreen */
-// Cette fonction sera appelée lorsque la carte passe en mode plein écran
-function onFullScreenChange() {
-  var mapElement = document.getElementById('mapMusee');
-  var filterElement = document.getElementById('mapFilter');
-  var buttonElement = document.getElementById('open-close-filter');
-  var parentContainer = document.getElementById('mapElementContainer');
-
-  // Vérifie si la carte est en mode plein écran
-  if (document.fullscreenElement === mapElement) {
-      // Si oui, déplace les éléments de filtre en dehors du conteneur de la carte
-      mapElement.appendChild(filterElement);
-      mapElement.appendChild(buttonElement);
-      $(filterElement).toggleClass("fullscreen-filters")
-      $(buttonElement).toggleClass("fullscreen-filters")
-  } else {
-      // Si non, remet les éléments de filtre dans le conteneur de la carte
-      parentContainer.insertBefore(filterElement, mapElement)
-      parentContainer.insertBefore(buttonElement, mapElement)
-      $(filterElement).toggleClass("fullscreen-filters")
-      $(buttonElement).toggleClass("fullscreen-filters")
-  }
-}
-
-/* END Add filters on fullscreen */
-
-const createContinentMarkers = c_data => {
-  // Remove old popups
-  if (window["continents_popups"]){
-      window["continents_popups"].forEach(popup => {
-          map.removeLayer(popup)
-      })
-  }
-
-  window["continents_popups"] = []
-  Object.keys(c_data.continents).map(key => {
-
-      var popup = new L.popup({closeButton: false, closeOnClick:false, autoClose:false})
-                      .setLatLng(c_data.continents[key].latlng)
-                      .setContent(createPopupContinent(c_data.continents[key], popup))
-                      .openOn(map)
-
-      map.addLayer(popup)
-      window["continents_popups"].push(popup)
-  })
-}
-
-const createCountriesLayers = data => {
-  data.map( dataset => {
-      let topo = topojson.feature(dataset.data, dataset.data.objects[dataset.name])
-      window["countries_layers"].push(L.geoJson(topo, { onEachFeature: onEachTopojson, style: style }).addTo(map))
-  })
-}
-
 /* PROCESS DATA */
-const createDataObject = (instruments_data) => {
+/* !!!!! TIMESPENDER !!!!! */
+/* WAIT FOR DIRECT EXPORT */
+const createDataObject = (instruments_data, continent_infos, data_countries) => {
   const c_data = {
-    pays: [],
-    continents: {},
-    count_by_type: {},
-    raw_data: instruments_data,
-    convert_iso_name: {},
+      pays: new Set(),
+      continents: {},
+      count_by_type: {},
+      raw_data: instruments_data,
+      convert_iso_name: {},
   };
-  // Group instruments_data by Continent
-  instruments_data.forEach((item) => {
-    const continent = item.Continent || "unknown";
-    c_data.continents[continent] = c_data.continents[continent] || {
-      count: 0,
-      name_en: window.continent_infos[continent].name_en,
-      name: continent,
-      latlng: window.continent_infos[continent].latlng,
-      zoom_level: window.continent_infos[continent].zoom_level,
-      liste_pays: [],
-      notices: {},
-    };
 
-    const continentData = c_data.continents[continent];
+  const countryInfosMap = new Map(data_countries.map(country => [country["Alpha-2 code"], country]));
 
-    continentData.count += 1;
-    if (!continentData.liste_pays.includes(item["Code ISO-2"])) {
-      continentData.liste_pays.push(item["Code ISO-2"]);
-    }
+  instruments_data.forEach(item => {
+      const continent = item.Continent || "unknown";
+      if (!c_data.continents[continent]) {
+          c_data.continents[continent] = {
+              count: 0,
+              name_en: continent_infos[continent].name_en,
+              name: continent,
+              latlng: continent_infos[continent].latlng,
+              zoom_level: continent_infos[continent].zoom_level,
+              liste_pays: new Set(),
+              notices: {},
+              raw_data: []
+          };
+      }
 
-    const countryData = continentData.notices[item["Code ISO-2"]] || {
-      count: 0,
-      cities: {},
-    };
+      const continentData = c_data.continents[continent];
+      continentData.count++;
+      continentData.liste_pays.add(item["Code ISO-2"]);
+      continentData.raw_data.push(item);
 
-    countryData.count += 1;
+      const countryInfo = countryInfosMap.get(item["Code ISO-2"]) || null;
+      if (!continentData.notices[item["Code ISO-2"]]) {
+          continentData.notices[item["Code ISO-2"]] = {
+              count: 0,
+              cities: {},
+              latlng: countryInfo ? [countryInfo["Latitude (average)"], countryInfo["Longitude (average)"]] : null,
+              name_fr: item.Pays
+          };
+      }
 
-    const cityData =
-      countryData.cities[item.Ville] || {
-        count: 0,
-        notices: [],
-      };
+      const countryData = continentData.notices[item["Code ISO-2"]];
+      countryData.count++;
 
-    cityData.count += 1;
-    cityData.notices.push(item);
+      if (!countryData.cities[item.Ville]) {
+          countryData.cities[item.Ville] = {
+              count: 0,
+              notices: []
+          };
+      }
 
-    countryData.cities[item.Ville] = cityData;
-    continentData.notices[item["Code ISO-2"]] = countryData;
+      const cityData = countryData.cities[item.Ville];
+      cityData.count++;
+      cityData.notices.push(item);
 
-    if (!c_data.pays.includes(item["Code ISO-2"])) {
-      c_data.pays.push(item["Code ISO-2"]);
-    }
-
-    c_data.convert_iso_name[item["Code ISO-2"]] = item["Pays"];
-
-    c_data.count_by_type[item["Type d'objet"]] =
-      (c_data.count_by_type[item["Type d'objet"]] || 0) + 1;
+      c_data.pays.add(item["Code ISO-2"]);
+      c_data.convert_iso_name[item["Code ISO-2"]] = item["Pays"];
+      c_data.count_by_type[item["Type d'objet"]] = (c_data.count_by_type[item["Type d'objet"]] || 0) + 1;
   });
+
+  c_data.pays = Array.from(c_data.pays);
+  Object.keys(c_data.continents).forEach(continent => {
+      c_data.continents[continent].liste_pays = Array.from(c_data.continents[continent].liste_pays);
+  });
+
   return c_data;
 };
 
+function download(content, fileName, contentType) {
+  var a = document.createElement("a");
+  var file = new Blob([content], {type: contentType});
+  a.href = URL.createObjectURL(file);
+  a.download = fileName;
+  a.click();
+}
 
-/* MAP CONFIG */
+function generalMapMusee(data, initial_data = false){
+    console.log(data)
+    console.time("generalMap")
+    const continent_infos  = data[1].continents_infos
+    const object_type = data[1].object_type
+    const data_countries = data[2]
 
-const calculateCenterGPS = coordinates => {
+    /* Export sortedData */
+    
+    /* const instruments_data = data[0]
+    const sortedData = createDataObject(instruments_data, continent_infos, data_countries) 
+    console.log(sortedData)
+    download(JSON.stringify(sortedData), 'sortedData.json', 'text/plain');  */
+   
 
-  if (!coordinates.length) return null;
+    const sortedData = data[0] 
+    window["sortedData"] = data[0] 
 
-  let totalLat = 0;
-  let totalLon = 0;
+    // Création de la carte
+    const initialView = { latlng : [20, 155], zoom : 2 }
+    window["mapMusee"] = createMap(initialView)
+    window["countries_layers"] = []
+    window["groups"] = []
+    window["markers"] = []
+    window["countryMarkers"] = []
+    window["unknown_markers"] = {
+      "continents": {},
+      "countries": {}
+    }
+    window["continents_popups"] = []
+    window["neighbors"] = []
+    window["object_type"] = data[1].object_type
+    window["topojson_data"] = []
+    window["data_countries"] =  data[2]
+    window["object_type_data"] =  data[1]
+    window["output_topo_data"] =  data[3]
+    window["initial_data"] = initial_data || data[0]
 
-  coordinates.forEach(coord => {
-    totalLat += coord[0];
-    totalLon += coord[1]; 
+
+    // Création des layers des pays, comportement au hover et clique
+    let countries_data = [{ "data" : data[3], "name" : "world" }]
+    createCountriesLayers(countries_data)
+
+    // Création des clusters
+    window.groups = createCluster(sortedData, data_countries)
+
+    
+    // Création des Boutons continents
+    createContinentMarkers(sortedData)
+
+    // Comportement des filtres
+    handleFilters()
+
+    // Set initial count
+    document.getElementById("nb-items").textContent = window.sortedData.raw_data.length + " Objet(s)"
+
+    // Ouvrir et fermer le menu des filtres
+    $("#open-close-filter").click(e => {
+      $("#mapFilter, #open-close-filter, #mapMusee").toggleClass("open")
+      onkeyup = e => {
+        if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
+          $("#mapFilter, #open-close-filter").removeClass("open")
+        }
+      };
+    })
+
+    // Filters 
+    createOptionsLocalisation(window.sortedData)
+    populateObjectTypes(window.sortedData)
+    displayResultNumber(window.sortedData)
+    console.timeEnd("generalMap")
+
+    // Comportement au dezoom
+window.mapMusee.on('moveend', function() {
+  if(window.mapMusee.getZoom() <= 2.5) {
+    // Regroupez les opérations de suppression de layers pour minimiser les appels de fonction
+    const allLayersToRemove = [
+      ...Object.values(window.groups.countriesGroup), 
+      ...Object.values(window.unknown_markers.countries),
+      ...window.neighbors,
+      ...Object.values(window.groups.continentGroup),
+      ...Object.values(window.unknown_markers.continents)
+    ];
+
+    allLayersToRemove.forEach(layer => window.mapMusee.removeLayer(layer));
+
+    // Ajout en masse de tous les popups de continents
+    window.continents_popups.forEach(popup => window.mapMusee.addLayer(popup));
+
+    // Optimisation de la sélection jQuery
+    const selectedCountryElement = selectizeItem[0].selectize;
+    const selectedCountry = selectedCountryElement.getValue();
+    if(selectedCountry) {
+      const countryPath = `path.${selectedCountry.toLowerCase()}`;
+      const $countryPath = $(countryPath);
+      $countryPath.css({ opacity: 0, fillOpacity: 0 }).removeClass("selected");
+      selectedCountryElement.setValue("empty");
+    }
+
+    updateCountObjects();
+  }
+
+
+});
+
+    // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
+    document.addEventListener('fullscreenchange', onFullScreenChange);
+
+    // Responsive map
+    responsiveMap()
+
+    // Création du bouton Réinitialiser les filtres
+    createResetButton(window.mapMusee)
+
+    // Hide loader
+    $(".loader").hide();
+}
+
+function responsiveMap(){
+  setResponsiveHeight()
+  addEventListener("resize", () => {
+      setResponsiveHeight()
   });
+}
+function setResponsiveHeight(){
+  var margin = 40
+  var titleHeight = $('.map-title').outerHeight(true)
+  var filters = document.getElementById("mapFilter")
+  var mapContainer = document.getElementById("mapMusee")
 
-  return [
-    totalLat / coordinates.length,
-    totalLon / coordinates.length
-  ];
-
+  var windowHeight = window.innerHeight
+  var mapElementsHeight = windowHeight - titleHeight - margin
+  filters.style.height = mapElementsHeight + "px"
+  mapContainer.style.height = mapElementsHeight + "px"
 }
 
 const normalize_string = str => {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
 }
-
+  
 const removeDuplicateObject = (arr, key) => {
-  const unique = [];
-  for (const item of arr) {
-      const isDuplicate = unique.find((obj) => obj[key] === item[key]);
-      if (!isDuplicate) { unique.push(item) }
-  }
-  return unique
-}
-
-/* Popup des Continents */
-const createPopupContinent = (countries_to_display, popup) => {
-
-  let popupContent = document.createElement('div')
-  popupContent.setAttribute("class", 'continent-popup')
-  popupContent.setAttribute("data-continent", normalize_string(countries_to_display.name_en))
-
-  let title = document.createElement('h4')
-  title.textContent = countries_to_display.name
-  popupContent.appendChild(title)
-
-  let number = document.createElement('p')
-  number.textContent = `${countries_to_display.count} Objets`
-  popupContent.appendChild(number)
-
-  $(popupContent).hover( 
-    e => { hoverCountryEffect(e, 0.6) },
-    e => { hoverCountryEffect(e, 0) }
-  )
-  $(popupContent).click( 
-    e => {
-      // Open all popup before closing the selected one
-      window.continents_popups.forEach(c_popup => { 
-        map.openPopup(c_popup) 
-      })
-      resetclusters()
-      resetMarkers()
-
-      // Set view
-      window["map"].setView(countries_to_display.latlng, countries_to_display.zoom_level)
-
-      // Unhighlight countries
-      hoverCountryEffect(e, 0)
-   
-      createMarkersCountry(countries_to_display, false)
+    const unique = [];
+    for (const item of arr) {
+        const isDuplicate = unique.find((obj) => obj[key] === item[key]);
+        if (!isDuplicate) { unique.push(item) }
     }
-
-  )
-  return popupContent
+return unique
 }
 
-const hoverCountryEffect = (e, opacity) => {
-
-  // Get name depending on DOM element
-  var continent_name = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent")
-  let svg_countries = []
-  if (e.layerID){
-    var path = `path.${e.layerID.toLowerCase()}`
-    if($(path).length == 0 ) { return }
+  const createMap = (initialView) => {
+      var map = L.map('mapMusee', { 
+          scrollWheelZoom: true, 
+          minZoom :  2, // Note pour le futur: un bug dans leaflet fait qu'une valeur de minZoom non Int fait disparaitre les marqueurs uniques.
+          maxZoom: 12,
+      }).setView(initialView.latlng, initialView.zoom);
     
-    var element = document.getElementById("mapMusee").getElementsByClassName(e.layerID.toLowerCase())
-    svg_countries.push(Array.from(element))
+      L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map)
+      window.fullScreenControl = L.control.fullscreen({ /* options */ });
+      map.addControl(window.fullScreenControl);
+      return map
   }
-  else{
-    window.current_dataset.pays.map(country => {
-      if (country === ""){ return }
 
-      var path = `path.${continent_name.toLowerCase()}.${country.toLowerCase()}`
-      if($(path).length == 0 ) { return }
-      
-      var element = document.getElementById("mapMusee").getElementsByClassName(`${continent_name.toLowerCase()} ${country.toLowerCase()}`)      
-      svg_countries.push(Array.from(element))
+const createCountriesLayers = (data) => {
+
+    data.map( dataset => {
+        let topo = topojson.feature(dataset.data, dataset.data.objects[dataset.name])
+        window.countries_layers.push(L.geoJson(topo, { onEachFeature: onEachTopojson, style: style }).addTo(window.mapMusee))
     })
-  }
-  svg_countries = svg_countries.flat()
-  svg_countries.map(elt=> { 
-    $(elt).css({"opacity" : opacity, "fill-opacity" : opacity, "stroke-opacity":0.8, "stroke-color": "#001B3B"}) })
+
 }
 
-// Correct map origins for america
-const enableAnteMeridian = lng => {
-  return lng < -20 ? lng +=360 : lng
-}
-
-const createMarkersNeighbors = (neighbor, bounds=false) => {
-
-  // Harmonize data
-  var countries_to_display = neighbor
-  countries_to_display = [... Object.keys(countries_to_display).map(key => {return {"code":key, "obj":countries_to_display[key]}})]
-
-  // Remove old markers
-  resetMarkers()
-
-  // Reset Layers state of markers
-  resetLayerState()
-
-  countries_to_display.map(country => {
-    var topo = window["topojson_data"].filter(item => {return item.ISO_A2_EH == country.code })[0]
-    if (typeof topo == "undefined"){ return }
-    country["LABEL_Y"] = topo.LABEL_Y
-    country["LABEL_X"] = topo.LABEL_X
-    country["NAME_FR"] = topo.NAME_FR
-    country["name_native"] = topo.name_native
-
-    if (country.LABEL_Y === null && country.LABEL_X === null) { return }
-    var latlng = [
-      country.LABEL_Y,
-      enableAnteMeridian(country.LABEL_X)
-    ]
-
-    if (neighbor){
-      if (!bounds.contains(latlng)) {
-        latlng = calculateNewLatLng(latlng, bounds.pad(-0.95))
-      }
-      var html =  `<div class="neighbor-marker" id="${country.code}">
-                    <img src="/ui/plug-in/integration/carte-instrument-musee/img/boussole.svg" alt=""/>
-                    <div>
-                      <h3><span>${country.NAME_FR}</span> (${country.name_native})</h3>
-                      <p>${country.obj.count} Objets</p>
-                    </div>
-                  </div>`
-      var icon = L.divIcon({ 
-        html: html,
-        className: `continent-marker neighbor`
-      })
+const style = features => {
+    return {
+        fillColor: "#001B3B",
+        opacity: 0,
+        fillOpacity: 0,
+        className: `${normalize_string(features.properties.CONTINENT)} ${normalize_string(features.properties.ISO_A2_EH)}`,
     }
-    createSingleMarker(latlng, icon).addTo(window["country_markers"])
-  })
+  }
+const onEachTopojson = (features, layer) => {
+    // Add id to layer 
+    var topojson_data = []
+    let props = layer.feature.properties
+    layer["has_markers"] = false
+    layer.layerID = props.ISO_A2_EH == -99 ? props.ISO_A3 == -99 ? normalize_string(props.NAME_EN) : props.ISO_A2 : props.ISO_A2_EH 
+    layer.continent = props.CONTINENT
+
+    topojson_data.push(props)
+    window.topojson_data.push(topojson_data.flat()[0])
+
+   
+    if (!window.sortedData.pays.includes(layer.layerID)) { return false }
+    layer.on({
+      click: (e) => {
+        if(!hasNotices(layer)) { return }
+        displayCountryMarkers(e)
+        
+       } 
+    })
+    layer.on( "mouseover", e => { 
+      if(!hasNotices(layer)) { return }
+      $(e.target._path).css({ opacity: 0.6, fillOpacity: 0.6 })
+    })
+  
+    layer.on( "mouseout", e => { 
+      if(!hasNotices(layer)) { return }
+      $(e.target._path).css({ opacity: 0, fillOpacity: 0 })
+    })
 }
-/* Marqueurs des Pays */
-const createMarkersCountry = (continent_obj, bounds=false) => {
-  // Harmonize data
-  var countries_to_display = continent_obj.notices
-  countries_to_display =[... Object.keys(countries_to_display).map(key => {return {"code":key, "obj":countries_to_display[key]}})]
+function hasNotices(layer){
+  var selectedCountry = layer.layerID
+  var isRecordChecked = document.getElementById("with-records").checked;
+  var typeFilter = document.querySelector('input[name="types"]:checked').value;
 
-  // Remove old markers
-  resetMarkers()
+  function recordFilterFunction(notice) {
+    return isRecordChecked ? notice["URL Enregistrement"] : true;
+  }
 
-  // Reset Layers
-  resetLayerState()
+  function typeFilterFunction(notice) {
+      return typeFilter !== "all" ? normalize_string(notice["Type d'objet"]) === typeFilter : true;
+  }
 
-  var countries_cluster = L.markerClusterGroup({
+  function combinedFilter(notice) {
+      return recordFilterFunction(notice) && typeFilterFunction(notice);
+  }
+  var countryNotice = window.sortedData.raw_data.filter(notice => { return notice["Code ISO-2"] == selectedCountry})
+  var count = countryNotice.filter(notice => combinedFilter(notice)).length
+  return count == 0 ? false : true
+}
+
+function createCluster(sortedData, data_countries) {
+  var parentGroup = L.markerClusterGroup({
     showCoverageOnHover: false,
     iconCreateFunction: function(cluster) {
       return L.divIcon(cluster_icon(cluster))
-    }
+      },
+    chunkedLoading: true,
+    chunkInterval: 50, // Temps en ms entre le traitement des lots
+    chunkDelay: 10,    // Délai supplémentaire pour maintenir la réactivité
+    maxClusterRadius: 50 // Augmenter pour moins de clusters, diminuer pour plus de précision
   })
 
-  countries_cluster.on('clustermouseover', function(event) {
+  var continentGroupObject = {};
+  var countryGroupObject = {};
+
+  Object.keys(sortedData.continents).forEach(continent_name => {
+    var continentGroup = L.featureGroup.subGroup(parentGroup);
+    continentGroupObject[continent_name] = continentGroup;
+
+    var continentNotices = sortedData.continents[continent_name].notices;
+    Object.keys(continentNotices).forEach(country_code => {
+
+      createContinentCluster(country_code, continentGroup, countryGroupObject, continent_name, sortedData);
+
+      createCountriesCluster(continentNotices[country_code], country_code, countryGroupObject, data_countries);
+    });
+
+  });
+
+  parentGroup.on('clustermouseover', function(event) {
     getHoverCountryCluster(event, 0.6)
 
   })
-  countries_cluster.on('clustermouseout', function(event) {
+  parentGroup.on('clustermouseout', function(event) {
     getHoverCountryCluster(event, 0)
 
   })
-  function getHoverCountryCluster(event, opacity){
-    var selected_countries = []
-      
-    var markers = event.layer._markers
-    if (markers){
-      getMarkersIds(markers, selected_countries)
-    }
 
-    var childClusters = event.layer.options.icon._childClusters
-    if(childClusters){
-      childClusters.map(cluster => {
-        let markers = cluster._markers
-        if (markers){
-          getMarkersIds(markers, selected_countries)
-        }
-      })
-    }
-    
-    function getMarkersIds(markers, selected_countries){
-      markers.map(marker => { 
-        let id = $(marker.options.icon.options.html)
-        if (id.attr("id")) { 
-          selected_countries.push(id.attr("id").replace("glob-", ""))
-        }
-      })
-    }
-    
-    selected_countries.map(country_code =>{
-      window.countries_layers.map(layers => { 
-        layers.eachLayer(layer => {
-          if(layer.feature.properties.ISO_A2_EH != country_code){ return }
-          hoverCountryEffect(layer, opacity)
-        })
-      })
-    })
+  window.mapMusee.addLayer(parentGroup);
+
+  var overlayMaps = { ...continentGroupObject, ...countryGroupObject };
+  L.control.layers(null, overlayMaps).addTo(window.mapMusee);
+
+  return {"continentGroup" : continentGroupObject, "countriesGroup" : countryGroupObject}
+}
+function getHoverCountryCluster(event, opacity){
+  var selected_countries = []
+  var markers = event.layer._markers
+  if (markers){
+    getMarkersIds(markers, selected_countries)
   }
 
-  countries_to_display.map(country => {
-    var topo = window["topojson_data"].filter(item => {return item.ISO_A2_EH == country.code })[0]
-    if (typeof topo == "undefined"){ return }
-    country["LABEL_Y"] = topo.LABEL_Y
-    country["LABEL_X"] = topo.LABEL_X
-    country["NAME_FR"] = topo.NAME_FR
-    country["name_native"] = topo.name_native
+  var childClusters = event.layer.options.icon._childClusters
+  if(childClusters){
+    childClusters.map(cluster => {
+      let markers = cluster._markers
+      if (markers){
+        getMarkersIds(markers, selected_countries)
+      }
+    })
+  }
+  hoverCountryEffect(event, selected_countries, opacity)
+}
 
-    if (country.LABEL_Y === null && country.LABEL_X === null) { return }
-    var latlng = [
-      country.LABEL_Y,
-      enableAnteMeridian(country.LABEL_X)
-    ]
+function getMarkersIds(markers, selected_countries){
+  markers.map(marker => { 
+    let id = $(marker.options.icon.options.html)
+    if (id.attr("id")) { 
+      selected_countries.push(id.attr("id").replace("glob-", ""))
+    }
+  })
+}
+const cluster_icon = cluster => {
+  var count  = 0
+  cluster.getAllChildMarkers().map(country => {
+    let regex = /<[^>]*>(\d+)\s*[^<]*<\/[^>]*>/
+    let number = parseInt(country.options.icon.options.html.match(regex)[1])
+    if (number) { count += number }
+  })
 
+  return { html: `<p class="country-marker marker-count">${count}</p>`, className: `continent-marker`}
+}
 
-    var html = `<p class="country-marker" id="glob-${country.code}">${country.obj.count}</p>`
+function createContinentCluster(country_code, parentGroup, countryMarkers, continent_name, sortedData){
+
+  // Skip si le marqueur existe déjà
+  if (countryMarkers[country_code] && country_code != "") { return }
+  var continentNotices = sortedData.continents[continent_name].notices
+
+  var latlng = continentNotices[country_code].latlng
+  if (latlng) { 
+    var  countryCenter = [continentNotices[country_code].latlng[0], enableAnteMeridian(continentNotices[country_code].latlng[1])]
+    var html = `<p class="country-marker marker-count" id="glob-${country_code}" data-continent="${continent_name}">${continentNotices[country_code].count}</p>`
     var icon = L.divIcon({ 
       html: html,
       className: `continent-marker`
     })
-    
 
-    var marker = createSingleMarker(latlng, icon)
-    countries_cluster.addLayer(marker)
-
-  })
-  window["countries_cluster"] = [countries_cluster]
-  map.addLayer(countries_cluster)
-
-
-  let unknown_countries = countries_to_display.filter(country => { return country.code == ""})[0]
-  if(unknown_countries){
-    let unknown_countries_notices = unknown_countries.obj.cities[""].notices
-    let continent_infos = window.continent_infos[unknown_countries_notices[0].Continent]
-    var html = `<div class="country-marker unknown">
-                  <p class="continent_unknown_country">${continent_infos.norm_name} : </p>
-                  <p>Sans Localisation</p><p>${unknown_countries.obj.count} Objet(s)</p>
-                </div>`
-                
-    var icon = L.divIcon({ 
-      html: html,
-      className: `unknown-marker`
+    var notices = []
+    Object.keys(continentNotices[country_code].cities).map(city => { 
+      notices.push(continentNotices[country_code].cities[city].notices) 
     })
+
+
+    var markerData = {
+      "notices": notices.flat(), 
+      "count": continentNotices[country_code].count, 
+      "country_code" : country_code,
+      "type" : "country",
+      "isDisplayed": true
+    }
+
+    var countryMarker = L.marker( countryCenter, {icon: icon})
+    countryMarker["data"] = markerData
     
-    var marker = createSingleMarker(continent_infos.latlng, icon, unknown_countries_notices)
-    countries_cluster.addLayer(marker)
+    countryMarker.on('mouseover', function(event) {
+      hoverCountryEffect(event, [country_code], 0.6)
+    })
+  
+    countryMarker.on('mouseout', function(event) {
+      hoverCountryEffect(event, [country_code], 0)
+    })
+
+    countryMarker.on("click", function(e){
+      displayCountryMarkers(e)
+    })
+    window.countryMarkers.push(countryMarker)
+    countryMarkers[country_code] = countryMarker; // Stocker le marqueur du pays
+    parentGroup.addLayer(countryMarker); // Ajouter le marqueur du pays au groupe parent
+  }
+
+
+
+  if(continentNotices[country_code].cities[""] && (country_code == "" || !latlng)){
+    var latlng = sortedData.continents[continent_name].latlng
+
+    let markerData = continentNotices[country_code].cities[""].notices
+    var countryMarker = createUnknownMarker(latlng, continent_name, continentNotices[country_code].count, markerData)
+    countryMarker["type"] = "country"
+    window.unknown_markers.continents[continent_name] = countryMarker 
   }
 
 
 }
-const resetLayerState = () => {
-  window.countries_layers.map(group_layers => {
-    Object.keys(group_layers._layers).forEach(function(key, index) { group_layers._layers[key].has_markers = false })
+
+function createCountriesCluster(country_code_obj, country_code, countryGroupObject){
+  if (!country_code_obj.cities) { return }
+
+  // Nouveau cluster pour le pays
+  var countryCluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    iconCreateFunction: function(cluster) {
+      return L.divIcon(cluster_icon(cluster))
+      },
+    chunkedLoading: true,
+    chunkInterval: 50, // Temps en ms entre le traitement des lots
+    chunkDelay: 10,    // Délai supplémentaire pour maintenir la réactivité
+
+  }); 
+
+  // Stocker le cluster de chaque pays
+  countryGroupObject[country_code] = countryCluster; 
+
+
+  Object.keys(country_code_obj.cities).forEach(city => {
+    var cityData = country_code_obj.cities[city];
+    var markerData = {
+      "notices": cityData.notices, 
+      "count": cityData.count, 
+      "city" : city,
+      "type" : "city",
+      "known" : true,
+      "isDisplayed": true
+
+    }
+
+    // Création marqueur unknown
+    if (city == "" && country_code_obj.latlng){
+
+      var latlng =[country_code_obj.latlng[0], enableAnteMeridian(country_code_obj.latlng[1])];
+      var cityMarker = createUnknownMarker(latlng, country_code_obj.name_fr, country_code_obj.cities[city].count, cityData.notices)
+      cityMarker.data["type"] = "city"
+      window.unknown_markers.countries[country_code] = cityMarker
+      window.markers.push(cityMarker) 
+
+    }
+
+    if (cityData.notices[0]["Coordonnées"] != ""){
+      let marker = createMarker(city, cityData);
+      marker["data"] = markerData
+
+      // Ajouter le marqueur au cluster du pays
+      countryCluster.addLayer(marker);
+      window.markers.push(marker) 
+    }
+    
+  });
+}
+function createMarker(city, cityData) {
+        let latitude = parseFloat(cityData.notices[0]["Coordonnées"].split(",")[0])
+        let longitude =  enableAnteMeridian(parseFloat(cityData.notices[0]["Coordonnées"].split(",")[1]))
+        var html = `<div class="city-marker known" data-ville="${normalize_string(city)}">
+                    <p>${city}</p><p class="marker-count">${cityData.count} Objet(s)</p>
+                  </div>`;
+
+        var icon = L.divIcon({
+          html: html,
+          className: "city-container"
+        });
+        var popup =  L.responsivePopup({ autoPanPadding: [10,10] }).setContent(createMarkerPopup(cityData.notices))
+        var marker = L.marker([latitude, longitude], { icon: icon, bubblingMouseEvents: true, riseOnHover: true })
+          .bindPopup(popup).openPopup();
+        return marker
+}
+
+function createUnknownMarker(latlng, label, count, notices){
+  var html = `<div class="country-marker unknown">
+                <p class="continent_unknown_country">${label} : </p>
+                <p>Sans Localisation</p><p class="marker-count">${count} Objet(s)</p>
+              </div>`
+  var icon = L.divIcon({ 
+    html: html,
+    className: `unknown-marker`
+  })
+  var popup =  L.responsivePopup({ autoPanPadding: [10,10] }).setContent(createMarkerPopup(notices))
+  var unknownMarker = L.marker( latlng, {icon: icon, bubblingMouseEvents: true, riseOnHover: true }) 
+    .bindPopup(popup).openPopup();
+  var markerData = {
+    "notices": notices, 
+    "count": count, 
+    "city" : label,
+    "known" : false,
+    "isDisplayed": true
+
+  }
+  unknownMarker["data"] = markerData
+
+  return unknownMarker
+}
+
+const enableAnteMeridian = input => {
+  let lng = parseFloat(input)
+  return lng < -20 ? lng +=360 : lng
+}
+
+function createContinentMarkers(sortedData) {
+  // Remove old popups
+  window.continents_popups.forEach(popup => {
+      window.mapMusee.removeLayer(popup)
   })
 
-}
-const cluster_icon = cluster => {
-  var count  = 0
-  var temp = []
-  cluster.getAllChildMarkers().map(country => {
-    temp.push(country)
-    let regex = /<[^>]*>(\d+)\s*[^<]*<\/[^>]*>/
-    let number = country.options.icon.options.html.match(regex)
-    //console.log(country.options.icon.options)
-    if (number) { count += parseInt(number[1]) }
+  Object.keys(sortedData.continents).map(key => {
+
+      var popup = new L.popup({closeButton: false, closeOnClick:false, autoClose:false})
+                      .setLatLng(sortedData.continents[key].latlng)
+                      .setContent(createPopupContinent(sortedData.continents[key]))
+                      .openOn(window.mapMusee)
+
+      popup["continent_name"] = key
+      window.mapMusee.addLayer(popup)
+      window.continents_popups.push(popup)
   })
-
-  return { html: `<p class="country-marker">${count}</p>`, className: `continent-marker`}
-}
-const createSingleMarker = (latlng, icon, notices = false) => {
-  var marker = L.marker(latlng, {icon: icon, bubblingMouseEvents: true, riseOnHover:true} )
-      .on('click', function(e) {
-        window.continents_popups.forEach(popup => { map.closePopup(popup) })
-        let selected_country = e.target._icon.firstChild.id || `glob-${e.target._icon.firstChild.id}` || undefined
-        selected_country = selected_country.replace("glob-", "")
-
-        // Construct Neighbor
-        window.countries_layers.map(layers => { 
-          layers.eachLayer(layer => {
-
-            if(layer.feature.properties.ISO_A2_EH != selected_country){ return }
-
-            window["map"].fitBounds(layer._bounds) 
-            var neighbor_list = getNeighbor(layer)
-            createMarkersNeighbors(neighbor_list, layer._bounds)
-          })
-        })
-        
-        // Construct self culster
-        var layer_id = getSelfLayer(e.target)
-        if (layer_id) { 
-          createCitiesMarkers(layer_id, window.current_dataset) 
-        } 
-        else{
-          marker.bindPopup(createMarkerPopup(notices)).openPopup();
-        }
-      })
-      .on("mouseover", function(e) { markerHover(e, 0.6) })
-      .on("mouseout", function(e) { markerHover(e, 0) })
-  return marker
 }
 
-const getSelfLayer = elt => {
-  if ($(elt.options.icon.options.html).attr("id") == undefined) { return }
-  let self_id = $(elt.options.icon.options.html).attr("id")
-  self_id = self_id.replace("glob-", "")
-  var self_layer = {}
-  window.countries_layers.map(group_layers => {
-    Object.keys(group_layers._layers).forEach(function(key, index) {
-      if (group_layers._layers[key].layerID != self_id) { return }
-      self_layer = group_layers._layers[key]
-    })
-  })
-  return self_layer     
-}
+/* Popup des Continents */
+const createPopupContinent = (continent_object) => {
 
-const markerHover = (e, opacity) => {
+  let popupContent = document.createElement('div')
+  popupContent.setAttribute("class", 'continent-popup')
+  popupContent.setAttribute("data-continent", continent_object.name)
 
-  let selected_country = e.target._icon.firstChild.id || `glob-${e.target._icon.firstChild.id}`|| undefined
-  selected_country = selected_country.replace("glob-", "")
-  window.countries_layers.map(layers => { 
-    layers.eachLayer(layer => {
-      if(layer.feature.properties.ISO_A2_EH != selected_country){ return }
-      hoverCountryEffect(layer, opacity)
-    })
-  })
+  let title = document.createElement('h4')
+  title.textContent = continent_object.name
+  popupContent.appendChild(title)
+
+  let number = document.createElement('p')
+  number.textContent = `${continent_object.count} Objets`
+  popupContent.appendChild(number)
+
+  $(popupContent).hover( 
+    e => { hoverCountryEffect(e, continent_object.liste_pays, 0.6) },
+    e => { hoverCountryEffect(e, continent_object.liste_pays, 0) }
+  )
+  $(popupContent).click(e => {
+    var continentName = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent");
   
+    // Fonction pour ajouter ou retirer des couches
+    const toggleLayers = (action, layersGroup) => {
+      Object.keys(layersGroup).forEach(key => {
+        if (action === 'add') {
+          window.mapMusee.addLayer(layersGroup[key]);
+        } else if (action === 'remove') {
+          window.mapMusee.removeLayer(layersGroup[key]);
+        }
+      });
+    };
+  
+    // Ajouter tous les popups de continents sauf celui sélectionné
+    window.continents_popups.forEach(popup => {
+      if (popup.continent_name !== continentName) {
+        window.mapMusee.addLayer(popup);
+      } else {
+        window.mapMusee.removeLayer(popup);
+      }
+    });
+  
+    // Gérer les couches de groupes et marqueurs
+    toggleLayers('remove', window.groups.continentGroup);
+    toggleLayers('remove', window.unknown_markers.continents);
+  
+    // Ajouter le groupe du continent sélectionné
+    if (window.groups.continentGroup[continentName]) {
+      window.mapMusee.addLayer(window.groups.continentGroup[continentName]);
+    }
+  
+    // Ajouter le marqueur unknown si nécessaire
+    const unknownContinentMarker = window.unknown_markers.continents[continentName];
+    if (unknownContinentMarker && unknownContinentMarker._popup._content.innerHTML !== "0") {
+      window.mapMusee.addLayer(unknownContinentMarker);
+    }
+  
+    // Définir la vue de la carte et mettre à jour le compteur
+    const continentObject = window.sortedData.continents[continentName];
+    window.mapMusee.setView(continentObject.latlng, continentObject.zoom_level);
+    hoverCountryEffect(e, continentObject.liste_pays, 0);
+  
+    var selectedContinentKey = `0${normalize_string(continentName)}`;
+    selectizeItem[0].selectize.setValue(selectedContinentKey);
+    updateCountObjects();
+  });
+  
+  return popupContent
 }
+/**
+ * Modifie l'effet de survol sur les pays.
+ * 
+ * @param {Event} e - L'événement déclencheur.
+ * @param {Array} countries_to_display - Les codes des pays à afficher.
+ * @param {number} opacity - L'opacité à appliquer.
+ */
+const hoverCountryEffect = (e, countries_to_display, opacity) => {
+  const continent_name = $(e.target).attr("data-continent") || $(e.target).parent().attr("data-continent");
+  const normalize_continent_name = continent_name ? normalize_string(continent_name) : "";
+  let svg_countries = [];
+
+  if (e.layerID) {
+      const path = `path.${e.layerID.toLowerCase()}`;
+      if ($(path).length === 0) { return; }
+
+      const elements = document.getElementById("mapMusee").getElementsByClassName(e.layerID.toLowerCase());
+      svg_countries = Array.from(elements);
+  } else {
+      countries_to_display.forEach(country_code => {
+          if (country_code !== "") {
+              const elements = document.getElementById("mapMusee").getElementsByClassName(`${normalize_continent_name.toLowerCase()} ${country_code.toLowerCase()}`);
+              svg_countries.push(...Array.from(elements));
+          }
+      });
+  }
+
+  svg_countries.forEach(elt => {
+      $(elt).css({"opacity": opacity, "fill-opacity": opacity, "transition": "0.2s ease-in-out opacity"});
+  });
+};
+
+/**
+ * Affiche les marqueurs pour un pays sélectionné et gère l'affichage des layers sur la carte.
+ *
+ * @param {Event} e - L'événement déclencheur contenant les informations sur le pays sélectionné.
+ */
+function displayCountryMarkers(e) {
+  const selectedCountry = e.target.layerID || e.target._icon.firstChild.id.replace("glob-", "");
+
+  // Fonction pour retirer les layers de la carte
+  const removeLayers = (layerCollection) => {
+      Object.keys(layerCollection).forEach(key => {
+          if (window.mapMusee.hasLayer(layerCollection[key])) {
+              window.mapMusee.removeLayer(layerCollection[key]);
+          }
+      });
+  };
+
+  // Retirer les layers inutiles
+  [window.continents_popups, window.groups.continentGroup, window.unknown_markers.continents, window.groups.countriesGroup, window.unknown_markers.countries].forEach(removeLayers);
+
+  // Ajouter les layers nécessaires
+  if (window.groups.countriesGroup[selectedCountry]) {
+      window.mapMusee.addLayer(window.groups.countriesGroup[selectedCountry]);
+  }
+
+  const unknownCountryMarker = window.unknown_markers.countries[selectedCountry];
+  if (unknownCountryMarker && unknownCountryMarker.data.isDisplayed) {
+      window.mapMusee.addLayer(unknownCountryMarker);
+  }
+
+  // Mise en évidence et traitement des layers de pays
+  let isCountryLayerFound = false;
+  window.countries_layers.forEach(country_layer => {
+      Object.values(country_layer._layers).forEach(layer => {
+          const $path = $(layer._path);
+          if (layer.layerID === selectedCountry && !isCountryLayerFound) {
+              window.mapMusee.fitBounds(layer._bounds);
+              $path.addClass("selected");
+              createMarkersNeighbors(layer.feature.properties.borders_iso_a2.split(","), layer._bounds);
+              isCountryLayerFound = true;
+          } else if (isCountryLayerFound) {
+              $path.removeClass("selected");
+          }
+      });
+  });
+
+  selectizeItem[0].selectize.setValue(selectedCountry);
+  updateCountObjects();
+}
+
+
+/**
+ * Crée et affiche des marqueurs pour les pays voisins.
+ *
+ * @param {Array<string>} neighbors - Les codes des pays voisins à afficher.
+ * @param {L.LatLngBounds} [bounds=false] - Les limites géographiques pour ajuster la position des marqueurs.
+ */
+const createMarkersNeighbors = (neighbors, bounds = false) => {
+  if (neighbors[0] === "") { return; }
+
+  const combinedFilter = getFiltersSettings();
+
+  // Supprimer les anciens marqueurs voisins
+  window.neighbors.forEach(neighbor => window.mapMusee.removeLayer(neighbor));
+  window.neighbors = [];
+
+  neighbors.forEach(country_code => {
+      const layerKey = Object.keys(window.countries_layers[0]._layers).find(key => 
+          window.countries_layers[0]._layers[key].feature.properties.ISO_A2_EH === country_code
+      );
+
+      if (!layerKey) { return; }
+
+      const country = window.countries_layers[0]._layers[layerKey].feature.properties;
+      if (!country.LABEL_Y || !country.LABEL_X) { return; }
+
+      let latlng = [country.LABEL_Y, enableAnteMeridian(country.LABEL_X)];
+      if (bounds && !bounds.contains(latlng)) {
+          latlng = calculateNewLatLng(latlng, bounds.pad(-0.95));
+      }
+
+      let objectCount = 0;
+      try {
+          const continentName = country.CONTINENT;
+          const cities = window.sortedData.continents[continentName].notices[country_code].cities;
+          objectCount = Object.values(cities).reduce((count, city) => 
+              count + city.notices.filter(combinedFilter).length, 0);
+      } catch {
+          return;
+      }
+
+      const html = `<div class="neighbor-marker" id="${country_code}">
+                      <img src="/ui/plug-in/integration/carte-instrument-musee/img/boussole.svg" alt=""/>
+                      <div>
+                        <h3><span>${country.NAME_FR}</span> (${country.name_native})</h3>
+                        <p class="marker-count" data-continent="${country.CONTINENT}" data-country_code="${country_code}">${objectCount} Objet(s)</p>
+                      </div>
+                    </div>`;
+      const icon = L.divIcon({ html: html, className: `continent-marker neighbor` });
+      const marker = L.marker(latlng, { icon: icon }).on("click", displayCountryMarkers);
+      
+      window.neighbors.push(marker);
+      window.mapMusee.addLayer(marker);
+  });
+};
 
 // Fonction pour calculer les nouvelles coordonnées du marqueur
 const calculateNewLatLng = (latlng, bounds) => {
@@ -716,368 +885,84 @@ const calculateNewLatLng = (latlng, bounds) => {
 
   return L.latLng(lat, lng);
 }
-
-const onEachTopojson = (features, layer) => {
-
-  // Add id to layer 
-  var topojson_data = []
-  let props = layer.feature.properties
-  layer["has_markers"] = false
-  layer.layerID = props.ISO_A2_EH == -99 ? props.ISO_A3 == -99 ? normalize_string(props.NAME_EN) : props.ISO_A2 : props.ISO_A2_EH 
-  topojson_data.push(props)
-
-  // Remove Duplicate countries and store layers
-  window["topojson_data"].push(topojson_data)
-
-
-  
-
-  layer.on({
-    click: (e) => {
-      // Vérifie la présence d'instrument dans le pays
-      if(!window.current_dataset.pays.includes(layer.layerID)){ return }
-      if(L.markerClusterGroup == undefined) { return }
-      if((map.getZoom() >= 4) && (layer.has_markers == true)) { return }
-
-      window.continents_popups.forEach(popup => { map.closePopup(popup) })
-
-      var country_bounds =  e.target._bounds
-      Object.keys(country_bounds).map(key => { country_bounds[key].lng = enableAnteMeridian(country_bounds[key].lng) })
-      window["map"].fitBounds(country_bounds) 
-      var neighbor_list = getNeighbor(e.target)
-
-      createMarkersNeighbors(neighbor_list, e.target._bounds)
-      createCitiesMarkers(e.target, window.current_dataset)
-      
-      selectizeItem[0].selectize.setValue(layer.layerID)
-      selectizeItem[0].selectize.on("change", e => {
-        console.log("change")
-      })
-
-      var path = `path.${layer.layerID.toLowerCase()}`
-      if($(path).length == 0 ) { return }
-      $("path.selected").removeClass("selected")
-      $(path).toggleClass("selected")
-     } 
-  })
-  layer.on( "mouseover", e => { 
-
-    // Vérifie la présence d'instrument dans le pays
-    if(!window.current_dataset.pays.includes(layer.layerID)){ return }
-    createTooltipName(e) 
-    if(layer.has_markers == true) { return }
-    $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
-    $(e.target._path).css({ opacity: 0.6, fillOpacity: 0.6 })
-  })
-
-  layer.on( "mouseout", e => { 
-    $(`.neighbor-marker#${e.target.layerID}`).toggleClass("hovered")
-    $(e.target._path).css({ opacity: 0, fillOpacity: 0 }) 
-    $("#tooltip").remove()
-  })
-}
-
-const createTooltipName = e => {
-
-  // Create an array of all the neighbors id
-  var neighbor_id = []
-  Object.keys(window.country_markers._layers).map( leaflet_id => {
-    neighbor_id.push($(window.country_markers._layers[leaflet_id].options.icon.options.html).attr("id"))
-  })
-
-  $("#tooltip").remove()
-
-  if(neighbor_id.includes(e.target.feature.properties.ISO_A2_EH)){ return }
-
-  var name_fr = e.target.feature.properties.NAME_FR
-  var name_natve = e.target.feature.properties.name_native
-  
-  var tooltip = document.createElement("p")
-  tooltip.setAttribute("id", "tooltip")
-  tooltip.innerHTML = `${name_fr} <i>(${name_natve})</i>`
-  $("#mapMusee").append(tooltip)
-  var y = window.scrollY
-  $("#tooltip").css("left", `${e.originalEvent.layerX - 80}px`)
-  $("#tooltip").css("top", `${e.originalEvent.layerY - 80}px`)
-}
-
-const createCitiesMarkers = (layer, data = false) => {
-  if(layer == undefined) { return }
-  resetclusters();
-
-  layer["has_markers"] = true;
-    var cities = getNoticeData(layer, data);
-
-    var country_center = [layer.feature.properties.LABEL_Y, layer.feature.properties.LABEL_X];
-  
-    var markers = L.markerClusterGroup({
-      showCoverageOnHover: false,
-      iconCreateFunction: function(cluster) {
-        return L.divIcon(cluster_icon(cluster))
-      }
-  }); 
-
-
-
-  var unknownObjectsCount = 0; // Compteur pour le nombre total d'objets pour les localisations inconnues
-  var unknownCitiesNames = []; // Tableau pour stocker les noms des localisations inconnues
-
-  window["clusters_cities_cluster"] = [] // Sauvegarde des clusters connus
-  window["unknown_marker"] = [] // Sauvegarde des clusters inconnus
-  var markers_to_add = []
-
-  Object.keys(cities).map(key => {
-
-    if (cities[key].notices == undefined) { return }
-
-    let is_known = cities[key].notices[0]["Coordonnées"].split(",") != '' ? true : false;
-
-    if (!is_known) {
-      unknownObjectsCount += cities[key].count; // Ajoute le nombre d'objets pour cette localisation inconnue au compteur total
-      unknownCitiesNames.push(key); // Ajoute le nom de la localisation inconnue au tableau des noms
-
-    } 
-
-    else {
-
-      // Marqueurs pour les localisations connues
-      var coord = cities[key].notices[0]["Coordonnées"].split(",");
-      var latlng = [parseFloat(coord[0]), enableAnteMeridian(parseFloat(coord[1]))];
-      var name = key;
-      var html = `<div class="city-marker known" data-ville="${normalize_string(name)}">
-                  <p>${name}</p><p>${cities[name].count} Objet(s)</p>
-                </div>`;
-
-      var icon = L.divIcon({
-        html: html,
-        className: "city-container"
-      });
-
-      // Create markers
-      var marker = L.marker(latlng, { icon: icon, bubblingMouseEvents: true, riseOnHover: true })
-        .bindPopup(createMarkerPopup(cities[name].notices)).openPopup();
-      markers_to_add.push(marker)
-      window.clusters_cities_cluster.push(marker)
-    }
-  });
-
-  // S'il n'y a qu'un marqueur dans le pays, ajout direct à la carte, sinon création d'un cluster
-  markers_to_add.length == 1 ? map.addLayer(markers_to_add[0]) : markers_to_add.map(marker => { markers.addLayer(marker)})
-
-  // Crée un seul marqueur pour toutes les localisations inconnues combinées
-  if ((unknownCitiesNames.length > 0) && cities[""] && (typeof cities[""].notices != "undefined")) {
-    var latlng = [parseFloat(country_center[0]), enableAnteMeridian(parseFloat(country_center[1]))];
-
-    var html = `<div class="marker-cluster-medium">
-                  <div class="city-marker unknown" data-ville="${normalize_string('?')}">
-                    <p>${cities[""].notices[0].Pays}</p>
-                    <p>Sans Localisation</p>
-                    <p>${unknownObjectsCount} Objet(s)</p>
-                  </div>
-                </div>`;
-
-    var icon = L.divIcon({
-      html: html,
-      className: "city-container"
-    });
-
-    var unknown_marker = L.marker(latlng, { icon: icon, bubblingMouseEvents: true, riseOnHover: true })
-      .bindPopup(createMarkerPopup(cities[""].notices)).openPopup();
-    unknown_marker.setZIndexOffset(-1000)
-    unknown_marker.on("mouseover", function (e) {
-        e.target.setZIndexOffset(10000)
-    })
-    unknown_marker.on("mouseout", function (e) {
-        e.target.setZIndexOffset(-10000)
-    })
-    
-    map.addLayer(unknown_marker);
-    window.unknown_marker.push(unknown_marker)
-
-
-  }
-  
-  map.addLayer(markers);
-  window["clusters_cities_cluster"] = markers 
-  window["solo_city_cluster"] = markers_to_add 
-
-  // Sauvegarder la référence du groupe de marqueurs unknown_markers dans la variable globale clusters_cities_markers
-  window["clusters_cities_markers"] = unknown_marker;
-};
-
-const defineIcon = (url) => {
-  return L.icon({
-      iconUrl: url,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, 0]
-  })
-}
-
+/**
+ * Crée une popup pour un marqueur avec des informations sur les notices associées.
+ *
+ * @param {Array} notices - Un tableau de notices à afficher dans la popup.
+ * @returns {HTMLElement} Le conteneur de la popup.
+ */
 const createMarkerPopup = notices => {
+  const container = document.createElement("div");
+  container.className = "popup-container";
 
-  var container = document.createElement("div")
-  container.setAttribute("class", "popup-container")
+  if (!notices || notices.length === 0) {
+      container.textContent = "0";
+      return container;
+  }
 
   // Création de la rosace des catégories
-  var cats = [... new Set(notices.map(notice => { return notice["Type d'objet"]}))]
-  var angle_unit = 360 / cats.length * Math.PI / 180
-  var angle = -90 * Math.PI / 180
-  var rayon = 100
+  const categories = [...new Set(notices.map(notice => notice["Type d'objet"]))];
+  const angleUnit = 360 / categories.length * Math.PI / 180;
+  let angle = -90 * Math.PI / 180;
+  const radius = 100;
 
-  cats.map(cat => {
+  categories.forEach(category => {
+      const catNotices = notices.filter(notice => notice["Type d'objet"] === category);
+      const catInfo = window.object_type.find(obj => obj.label === category);
+      const catNamePluriel = catInfo ? catInfo.label_pluriel.replace("Oe", "Œ") : "";
 
-    // Ajout de close s'il n'y a q'une seule catégorie
-    var pos_x = cats.length > 1 ? 0 + rayon * Math.cos(angle) - 35 : 0   
-    var pos_y = 0 + rayon / 1.5 * Math.sin(angle)
-    angle += angle_unit
-    var cat_notices = notices.filter(notice => { return  notice["Type d'objet"] == cat})
-    var cat_name_pluriel = window.object_type.filter(obj => { return obj.label == cat})[0].label_pluriel
+      const posX = categories.length > 1 ? radius * Math.cos(angle) - 35 : 0;
+      const posY = radius / 1.5 * Math.sin(angle);
+      angle += angleUnit;
 
-    let button_cat = document.createElement("button")
-    button_cat.setAttribute("class", `cat_button ${normalize_string(cat).replace("'", "_")}`)
-    button_cat.setAttribute("style", `transform: translate(${pos_x}px, ${pos_y}px); transform-origin: 50% 50%;`)
-    button_cat.setAttribute("title", `Voir une sélection des ${cat_name_pluriel.replace("Oe","Œ")}`)
+      const buttonCat = document.createElement("button");
+      buttonCat.className = `cat_button ${normalize_string(category).replace("'", "_")}`;
+      buttonCat.style.transform = `translate(${posX}px, ${posY}px)`;
+      buttonCat.title = `Voir une sélection des ${catNamePluriel}`;
 
-    $(button_cat).on("click", function(e){
-      createCartel(e, cat_notices)
-      //$(".popup-container")[0].setAttribute("style","pointer-events: all;")
-    })
-  
-    let item_number = document.createElement("p")
-    item_number.innerHTML = cat_notices.length
-    button_cat.appendChild(item_number)
-    
-    container.appendChild(button_cat)
-  })
+      buttonCat.onclick = e => createCartel(e, catNotices);
 
-  var city_container = document.createElement("div")
-  city_container.setAttribute("class", "city-center")
-  city_container.setAttribute("style", `transform: translate(-54px, -9px); `)
-  city_container.setAttribute("title", "Voir une sélection des éléments")
-
-  var name_element = document.createElement("p")
-
-  if (notices[0].Ville == "") {
-    var textNode1 = document.createTextNode(notices[0].Pays);
-    var brNode = document.createElement('br');
-    var textNode2 = document.createTextNode('Sans localisation');
-
-    name_element.appendChild(textNode1);
-    name_element.appendChild(brNode);
-    name_element.appendChild(textNode2);
-  } else {
-      name_element.textContent = notices[0].Ville;
-  }
-  
-  city_container.appendChild(name_element)
-
-  var total_number = document.createElement("p")
-  total_number.textContent = notices.length + " Objet(s)"
-  city_container.appendChild(total_number)
-  $(city_container).on("click", function(e){
-    createCartel(e, notices)  
-    //$(".popup-container")[0].setAttribute("style","pointer-events: all;")
-  })
-
-  container.appendChild(city_container)
-
-  return container
-
-}
-
-const getNoticeData = (layer, data) => {
-  // Get french name of continent
-  let continent_fr = Object.keys(window.continent_infos).filter(key => {
-    return window.continent_infos[key].name_en == layer.feature.properties.CONTINENT
-  })[0]
-
-  // Get notices data for country by cities or data pass as parameters
-  if (data){
-    var cities = data.continents[continent_fr].notices[layer.layerID].cities
-  }
-  else{
-    var cities = window.current_dataset.continents[continent_fr].notices[layer.layerID].cities
-  }
- 
-  return cities
-
-}
-
-const getNeighbor = country => {
-
-  if (country.feature.properties.borders_iso_a2 === null) { return }
-  var iso_borders_iso_a2 = country.feature.properties.borders_iso_a2.split(",")
-  var neighbor_obj = {}
-
-  iso_borders_iso_a2.map( neighbor => {
-    window["topojson_data"].map(country => { 
-      if (country.ISO_A2_EH != neighbor) { return }
-
-      // Get french name of continent
-      let continent_fr = Object.keys(window.continent_infos).filter(key => {
-          return window.continent_infos[key].name_en == country.CONTINENT
-      })
-
-      try{
-        // Check if there's some notice
-        if (typeof window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH] == 'undefined') { return }
-
-        neighbor_obj[country.ISO_A2_EH] = window.current_dataset.continents[continent_fr[0]].notices[country.ISO_A2_EH]
-        neighbor_obj[country.ISO_A2_EH]["LABEL_X"] = country.LABEL_X
-        neighbor_obj[country.ISO_A2_EH]["LABEL_Y"] = country.LABEL_Y
-        neighbor_obj[country.ISO_A2_EH]["NAME_FR"] = country.NAME_FR
-        neighbor_obj[country.ISO_A2_EH]["name_native"] = country.name_native
-      }
-      catch (e) {}
-    
-    })
-  })
-  return neighbor_obj
-}
-
-const style = features => {
-  return {
-      fillColor: "#001B3B",
-      opacity: 0,
-      fillOpacity: 0,
-      className: `${normalize_string(features.properties.CONTINENT)} ${normalize_string(features.properties.ISO_A2_EH)}`,
-  }
-}
-const resetMarkers = () => {
-    for (var layer in window.country_markers._layers){
-      window.country_markers.removeLayer(layer)
-    }
-}
-const resetclusters = () => {
-
-  // Remove selected country
-  $("path.selected").removeClass("selected")
-
-  const layersToRemove = [
-    window.clusters_cities_cluster,
-    window.solo_city_cluster, 
-    window.countries_cluster,
-    window.clusters_cities_markers,
-    window.unknown_marker
-  ];
-
-  layersToRemove.forEach(layer => {
-    if(layer) {
-      if(Array.isArray(layer)) {
-        layer.forEach(marker => map.removeLayer(marker));
-      } else {
-        map.removeLayer(layer);
-      }
-    }
+      const itemNumber = document.createElement("p");
+      itemNumber.textContent = catNotices.length;
+      buttonCat.appendChild(itemNumber);
+      container.appendChild(buttonCat);
   });
 
+  const cityContainer = createCityContainer(notices);
+  container.appendChild(cityContainer);
+
+  return container;
+};
+
+/**
+* Crée un conteneur pour les informations de la ville.
+*
+* @param {Array} notices - Un tableau de notices à utiliser pour les informations de la ville.
+* @returns {HTMLElement} Le conteneur des informations de la ville.
+*/
+function createCityContainer(notices) {
+  const cityContainer = document.createElement("div");
+  cityContainer.className = "city-center";
+  cityContainer.style.transform = "translate(-54px, -9px)";
+  cityContainer.title = "Voir une sélection des éléments";
+
+  const nameElement = document.createElement("p");
+  nameElement.textContent = notices[0].Ville || `${notices[0].Pays} (Sans localisation)`;
+  cityContainer.appendChild(nameElement);
+
+  const totalNumber = document.createElement("p");
+  totalNumber.textContent = `${notices.length} Objet(s)`;
+  cityContainer.appendChild(totalNumber);
+
+  cityContainer.onclick = e => createCartel(e, notices);
+
+  return cityContainer;
 }
+
 
 /* CARTELS */
 
 const createCartel = (e, notices) => {
-
   // Randomize and take max 10 notices primary incontournables
   var item_to_show = 10
   var incontournables = notices.filter(notice => { return notice["Incontournable"] != ""})
@@ -1289,10 +1174,8 @@ const createCartel = (e, notices) => {
       $("#close-slider").click()
     }
   };
-
-
-
 }
+
 const createCloseButton = () => {
   if($("#close-slider").length) { return }
 
@@ -1386,242 +1269,313 @@ const progressBar = (elt, player) => {
 
 }
 
-/* FILTERS */
+function handleFilters() {
 
+  $("#with-records").click(e => {
+    applyFilters()
+  });
 
-const populatefilters = data => {
-
-  populateObjectTypes(data)
-  displayResultNumber(data)
-
-}
-
-const filtersActions = () => {
-
-/* ********************************************************************************************** */
-/* Fonctionnement : */ 
-/* Les marqueurs et décomptes sont déclenchés par la fonction createContinentMarkers.  */
-/* Lui passer une valuer modifiée de c_data permet de mettre à jour les informations sur la carte. */
-/* populateFilters met à jour les informations sur les filtres. */
-/* ********************************************************************************************** */
-
-  // Create first display of localisation
-  populateLocalisation(window.c_data)
-
-  /* Filter by recorded instruments */
-  $("#with-records").change(e => {
-
-      window.continents_popups.forEach(popup => { map.removeLayer(popup) })
-      let data_to_use = e.target.checked ? window.all_recorded_instruments : window.saved_initial_data
-      window.current_dataset = data_to_use
-
-      populatefilters(data_to_use)
-      createContinentMarkers(data_to_use)
-      populateLocalisation(data_to_use)  
-      filterSearch()
-      map.setView(window.initial_view.latlng, window.initial_view.zoom);
-  })
-
-  /* Filter by Type */
   $("#types-filter").change(e => {
-
-      // Remove all popup
-      window.continents_popups.forEach(popup => { map.removeLayer(popup) })
-
-      // Save current state
-      window.data_before_filtering = window.current_dataset
-
-      let selected_type = document.querySelector('input[name="types"]:checked').value
-      
-      if (selected_type == "all"){
-          var processed_filtered_data = window.data_before_filtering
-      }
-      else{
-          
-        let filtered_data = window.current_dataset.raw_data.filter(notice => { 
-            return normalize_string(notice["Type d'objet"]).replace(/'/gm, "_") == selected_type
-        })
-        var processed_filtered_data = createDataObject(filtered_data)
-
-      }
-      var country_code = selectizeItem[0].selectize.getValue()
-      if (country_code.length == 2){
-        window["countries_layers"].map(obj => {
-          Object.keys(obj._layers).filter(key => {
-              if (( obj._layers[key].layerID != country_code) || (obj._layers[key].layerID == undefined)) { return }
-              createCitiesMarkers(obj._layers[key], processed_filtered_data)
-          })
-      })
-        
-      }
-      else {
-        createContinentMarkers(processed_filtered_data)
-      }
-      
-
+    applyFilters()
   })
 
   /* Filter Localisation */
   $(document).on('mousedown', '.selectize-dropdown-content [data-value]', function(e) {
     var value = $(this).attr('data-value');
-    filterLocHandler(value)
-  });
-  /* Filter Localisation */
-  window.selectizeItem.on('change', function() {
-    var value = selectizeItem[0].selectize.getValue();
-    filterLocHandler(value)
- 
-  });
+    var continentSelected = false;
 
-  function filterLocHandler(value){
-    if (value != "" && value.length != 0){
-      window.c_data = window.data_before_filtering
-      var filtered_data = window.current_dataset.raw_data.filter(notice => { return value == notice["Code ISO-2"] })
-      let processed_filtered_data = createDataObject(filtered_data)
-      populatefilters(processed_filtered_data) 
-      window.c_data = processed_filtered_data
+    // Regrouper les opérations de suppression des couches
+    const removeAllLayers = () => {
+      // Retirer tous les popups, groupes et marqueurs
+      [window.continents_popups, window.groups.continentGroup, window.unknown_markers.continents,
+      window.groups.countriesGroup, window.unknown_markers.countries].forEach(group => {
+        Object.keys(group).forEach(key => window.mapMusee.removeLayer(group[key]));
+      });
+
+      // Retirer tous les marqueurs voisins
+      window.neighbors.forEach(neighbor => window.mapMusee.removeLayer(neighbor));
+
+      // Déselectionner pays
+      $('path').css({ opacity: 0, fillOpacity: 0 }).removeClass("selected");
+    };
+
+    window.continents_popups.forEach(continentpopup => {
+      if (normalize_string(continentpopup.continent_name) === normalize_string(value.replace("0", ""))) {
+        removeAllLayers();
+        window.mapMusee.addLayer(continentpopup);
+        continentpopup._content.click();
+        continentSelected = true;
+      }
+    });
+
+    if (!continentSelected) {
+      Object.keys(window.countries_layers[0]._layers).forEach(key => {
+        var layer = window.countries_layers[0]._layers[key];
+        if (layer.layerID === value) {
+          layer.fire('click');
+        }
+      });
     }
+  });
 
 
-    // if value is a country
-    if (value.length == 2){
-        window["countries_layers"].map(obj => {
-            Object.keys(obj._layers).filter(key => {
-                if (( obj._layers[key].layerID != value) || (obj._layers[key].layerID == undefined)) { return }
-                obj._layers[key].fire("click")
-            })
-        })
+  searchBox()
+
+}
+function applyFilters(){
+
+  var combinedFilter = getFiltersSettings()
+
+  // Cluster des continents
+  window.countryMarkers.forEach(marker => {
+    var continent_name = marker.data.notices[0].Continent
+    var hasNotices = marker.data.notices.some(combinedFilter);
+    if (hasNotices) {
+        var filteredNotices = marker.data.notices.filter(combinedFilter)
+        window.groups.continentGroup[continent_name].addLayer(marker);
+        updateMarkerContent(marker, filteredNotices.length, "continent");
+    } else {
+        window.groups.continentGroup[continent_name].removeLayer(marker);
     }
+    });
 
-    // else value is a continent
-    else{
-        let continent_infos = Object.keys(window.continent_infos).map(key => { 
-            let norm_continent = normalize_string(window.continent_infos[key].norm_name)
-            let norm_value =  normalize_string(value).replace(/^0/, "")
-            if (norm_continent == norm_value) {
-                return window.continent_infos[key]
-            }
-        }).filter( Boolean )[0]
-        if (! continent_infos) { return }
+// Marqueurs inconnus des continents
+Object.keys(window.unknown_markers.continents).forEach(continent => {
+  var popup = window.unknown_markers.continents[continent];
+  var hasNotices = popup.data.notices.some(combinedFilter);
+  var filteredNotices = popup.data.notices.filter(combinedFilter);
+  updateMarkerPopup(popup, filteredNotices);
+  if (hasNotices) {
+      window.mapMusee.addLayer(popup);
+      //updateMarkerPopup(popup, filteredNotices);
+      updateMarkerContent(popup, filteredNotices.length, "city");
+  } else {
+      window.mapMusee.removeLayer(popup);
+      setUnknownMarkerDisplayStatus(popup, popup.data.city, false);
+  }
+});
 
+// Vérifiez la visibilité des groupes de continents et ajustez les marqueurs inconnus
+Object.keys(window.groups.continentGroup).forEach(continent => {
+  var group = window.groups.continentGroup[continent];
+  var isGroupVisible = window.mapMusee.hasLayer(group);
+  var popup = window.unknown_markers.continents[continent];
+
+  if (!isGroupVisible && popup) {
+      setUnknownMarkerDisplayStatus(popup, popup.data.city, false);
+      window.mapMusee.removeLayer(popup);
+  }
+});
+
+  // Cluster des pays
+  window.markers.forEach(marker => {
+    var country_code = marker.data.notices[0]["Code ISO-2"];
+    var hasNotices = marker.data.notices.some(combinedFilter);
+
+    if (hasNotices) {
+        var filteredNotices = marker.data.notices.filter(combinedFilter)
+        window.groups.countriesGroup[country_code].addLayer(marker);
+        updateMarkerPopup(marker, filteredNotices);
+        updateMarkerContent(marker, filteredNotices.length, "city");
+    } else {
+        window.groups.countriesGroup[country_code].removeLayer(marker);
+    }
+  });
+
+  // Update Neighbors count
+  window.neighbors.map(neighbor => {
+    // Récupération de la valeur de la balise marker-count et mise à jour
+    var htmlString = neighbor.options.icon.options.html
+    var htmlDoc = new DOMParser().parseFromString(htmlString, "text/html")
+    var popupCountElement = htmlDoc.querySelector('.marker-count') 
+
+    var continent = popupCountElement.getAttribute("data-continent")
+    var country_code = popupCountElement.getAttribute("data-country_code")
+
+    var objectCount = 0
+    var cities = window.sortedData.continents[continent].notices[country_code].cities
+    Object.keys(cities).map(city => {
+      objectCount += cities[city].notices.filter(combinedFilter).length
+    })
+
+    popupCountElement.textContent = popupCountElement.textContent.replace(/\d{1,5}/, objectCount)
+    var updatedHtml = new XMLSerializer().serializeToString(htmlDoc)
+
+    var newIcon = L.divIcon({
+      html: updatedHtml,
+      className: `continent-marker neighbor`
+    })
+    neighbor.setIcon(newIcon);
+
+  })
+  // mise à jour des compteurs
+  updateCountObjects()
+}
+
+
+function setUnknownMarkerDisplayStatus(marker, country_code, isDisplayed) {
+  let unknownID = window.unknown_markers.continents[country_code];
+  if (unknownID && unknownID.hasOwnProperty('_leaflet_id') && unknownID._leaflet_id === marker._leaflet_id) {
+      unknownID.data.isDisplayed = isDisplayed;
+  }
+}
+
+
+function updateMarkerPopup(marker, filteredNotices) {
+  var newPopupContent = createMarkerPopup(filteredNotices)
+  if (filteredNotices.length == 0){
+    marker.setPopupContent(newPopupContent);
+    marker.bindPopup(newPopupContent)
+
+  }
+  if (marker.hasOwnProperty("_popup") && marker.getPopup().isOpen()) {
+      marker.setPopupContent(newPopupContent);
+  } else {
+      marker.bindPopup(newPopupContent);
+  }
+}
+
+function updateMarkerContent(marker, count, type = false, className = false) {
+
+  // Récupération de la valeur de la balise marker-count et mise à jour
+  var htmlString = marker.options.icon.options.html
+  var htmlDoc = new DOMParser().parseFromString(htmlString, "text/html")
+  var popupCountElement = htmlDoc.querySelector('.marker-count')
+
+  popupCountElement.textContent = popupCountElement.textContent.replace(/\d{1,5}/, count)
+  var updatedHtml = new XMLSerializer().serializeToString(htmlDoc)
+
+  if(!className){
+      className = "city-container"
+    if (!marker.data.known){
+      className = "unknown-marker"
+    }
+    if (type == "continent"){
+      className = "continent-marker"
     }
   }
 
-  /* Search Plain text */
-  searchBox()
-
-
-
-
-  /* Access button */
-  $("#access-button").on("click", e => {
-
-    /* Mise en attente d'une v2 (problématique du nombre de colonnes du tableau + formatage des données pour leurs affichage */
-    //accessTable(window.c_data)
-
-    let search = document.getElementById("seeker").value
-    let terms = (search.length > 0 || search == undefined) ? `+${search}` : ""
-
-    let cat = $("#types-filter input[checked=true]").val() || ""
-    let type = cat != "" ? `+${window.object_type.filter(type => { return type.type == cat})[0].name_system}` : ""
-
-    let country_code = $("#loc-select")[0].selectize.items[0]
-    let localisation = country_code != undefined ? `+${window.c_data.convert_iso_name[country_code]}` : ""
-
-    let query_category_link = `https://collectionsdumusee.philharmoniedeparis.fr/search.aspx?SC=MUSEE&QUERY=${terms + type + localisation}`
-
-    window.open(query_category_link, "_blank");
-
+  var newIcon = L.divIcon({
+    html: updatedHtml,
+    className: className
   })
 
-}
-const getLayerByID = iso2 => {
-  let layer = window["countries_layers"].map(obj => {
-        Object.keys(obj._layers).filter(key => {
-            if (( obj._layers[key].layerID != iso2) || (obj._layers[key].layerID == undefined)) { return }
-            return obj._layers[key]
-        })
-    }).filter( Boolean )[0]
-    return layer
+ 
+  marker.setIcon(newIcon);
 }
 
-/* Reset Filters Button*/
-/* const createResetButton = () => {
+function updateCountObjects(){
+  var selectedCountry = document.querySelector("#loc-select [selected='selected']").value
+  var isRecordChecked = document.getElementById("with-records").checked;
+  var typeFilter = document.querySelector('input[name="types"]:checked').value;
 
-  let reset_button = document.createElement("button")
-  reset_button.id= "reset-button"
-  reset_button.setAttribute("class", "btn btn-default")
-  reset_button.setAttribute("type", "button")
-  reset_button.textContent = "Réinitialiser la carte"
+  function recordFilterFunction(notice) {
+      return isRecordChecked ? notice["URL Enregistrement"] : true;
+  }
 
-  $(reset_button).on("click", e => {
+  function typeFilterFunction(notice) {
+      return typeFilter !== "all" ? normalize_string(notice["Type d'objet"]) === typeFilter : true;
+  }
 
-    // Reset data
-    window.c_data = window.saved_initial_data
-    window.type_data = window.c_data
-    window.data_before_filtering = window.c_data
+  function combinedFilter(notice) {
+      return recordFilterFunction(notice) && typeFilterFunction(notice);
+  }
 
-    // Reset recorded
-    $("#with-records").prop( "checked", false )
+  var continentsCount = {};
+  Object.keys(window.sortedData.continents).map(continent => {
+    continentsCount[continent] = window.sortedData.continents[continent].raw_data.reduce((count, notice) => {
+      return combinedFilter(notice) ? count + 1 : count;
+    }, 0);
+  });
 
-    // Reset Location
-    window.selectizeItem[0].selectize.clear();
+  var selectize = selectizeItem[0].selectize;
 
-    // Reset Types
-    $("#all-types").prop( "checked", true )
+  Object.keys(selectize.options).forEach(optionKey => {
+      var option = selectize.options[optionKey];
+      var selectCountry = window.sortedData.raw_data.filter(notice => notice["Code ISO-2"] === option.id);
+      var count = selectCountry.filter(notice => combinedFilter(notice)).length || "0";
 
-    // Reset input
-    document.getElementById("seeker").value = ""
+      var newOption = {...option, count: count};
+      selectize.updateOption(optionKey, newOption);
+  });
 
-    // Reset Filters Values and map markers
-    populatefilters(window.c_data)
-    createContinentMarkers(window.c_data)
-    map.setView(window.initial_view.latlng, window.initial_view.zoom);
-  })
-  document.getElementById("mapMusee").appendChild(reset_button)
-  
-  //mapMusee(window["data"])
-  //console.log(window["map"])
-  //console.log(window["data"]) 
-}  */
-function createResetButton(map) {
+  Object.keys(continentsCount).forEach(continent => {
+      var continentKey = `0${normalize_string(continent)}`;
+      if (selectize.options[continentKey]) {
+          var continentOption = selectize.options[continentKey];
+          var newContinentOption = {...continentOption, count: continentsCount[continent]};
+          selectize.updateOption(continentKey, newContinentOption);
+      }
+  });
 
-  // Création d'un bouton réinitialisant la carte
-  var resetButton = document.createElement("button")
-  resetButton.id= "reset-button"
-  resetButton.setAttribute("class", "leaflet-bar leaflet-control")
-  resetButton.setAttribute("type", "button")
-  resetButton.setAttribute("title", "Réinitialiser la carte")
+selectize.refreshOptions(false);
+  var typesElements = document.querySelectorAll('input[name="types"]')
+  Array.from(typesElements).map(typeElement => {
+    if (typeElement.value == "all") { return }
+    var countLabel = $(typeElement).parent().parent().children().last()
 
-  let img = new DOMParser().parseFromString(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328.32 335.24">
-          <path d="m272.68,41.69c.7-1.2,1.18-2.62,2.13-3.58,8.06-8.17,16.25-16.22,24.3-24.4,5.24-5.33,11.3-7.22,18.38-4.58,6.45,2.41,9.87,8.12,9.88,16.08.03,28.45.04,56.89,0,85.34-.02,10.53-6.48,17.03-17.06,17.05-28.33.07-56.65.05-84.98,0-8.13-.01-13.87-3.55-16.35-10.11-2.69-7.13-.63-13.12,4.68-18.33,8.01-7.85,15.92-15.82,24.7-24.56-8.3-5.21-15.85-10.72-24.06-14.95-35.34-18.23-70.78-15.72-104.47,3.32-42.34,23.92-62.85,61.49-61.73,110.1,1.25,54.33,43.92,102.97,97.48,112.19,59.06,10.17,113.16-20.46,134.68-76.25,4.25-11.02,11.61-14.93,23.31-12.42,4.14.89,8.32,1.63,12.44,2.59,9.48,2.2,14.53,10.57,11.35,19.58-22.19,62.8-65.85,101.96-131.34,113.81-84.9,15.36-166.14-36.91-189.75-119.88C-19.69,121.46,37.59,25.09,129.83,4.28c51.97-11.73,97.68,1,138.54,33.99.87.7,1.74,1.42,2.62,2.11.18.14.44.2.66.29.34.34.69.69,1.03,1.03Z"/>
-      </svg>`,
-      'application/xml');
+    var typeKey = typeElement.value
 
-  resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
+    if(selectedCountry.startsWith("0")){
+      var continent_name = Object.keys(window.sortedData.continents).filter(continent => { 
+        if(normalize_string(continent) == selectedCountry.replace("0", "")){
+          return continent
+        }
+      })[0]
+      var continentNotice = window.sortedData.continents[continent_name].raw_data
+      var count = continentNotice.filter(recordFilterFunction).filter(notice => { return normalize_string(notice["Type d'objet"]).replace("'", "_") == typeKey}).length
+      countLabel.text(count)
+    }
+    else if(selectedCountry && selectedCountry != "empty"){
+      var countryNotice = window.sortedData.raw_data.filter(notice => { return notice["Code ISO-2"] == selectedCountry})
+      var count = countryNotice.filter(recordFilterFunction).filter(notice => { return normalize_string(notice["Type d'objet"]).replace("'", "_") == typeKey}).length
+      countLabel.text(count)
+    }
+    else if(selectedCountry == "empty" || selectedCountry == ""){
+      var countryNotice = window.sortedData.raw_data
+      var count = countryNotice.filter(recordFilterFunction).filter(notice => { return normalize_string(notice["Type d'objet"]).replace("'", "_") == typeKey}).length
+      countLabel.text(count)
+    }
 
-  $(resetButton).on("click", e => {
-    let recordedCheckbox = document.getElementById("with-records")
-    recordedCheckbox.checked = false
-    document.getElementById("seeker").value = ""
-
-    if (window.map == undefined) { return }
-    window.map.off()
-    window.map.remove()
-    window.map = undefined
     
-    mapMusee(window["data"])
   })
 
-  // Ajoutez le bouton à la carte
-  var resetControl = L.control({ position: 'topleft' });
-  resetControl.onAdd = function() {
-      return resetButton;
-  };
-  resetControl.addTo(window["map"]);
+  var totalCount = 0;
+  if(selectedCountry && selectedCountry != "empty"){
+    var typesElements = document.querySelectorAll('input[name="types"]')
+    Array.from(typesElements).map(typeElement => {
+      if (typeElement.value == "all") { return }
 
-} 
+      var countLabel = $(typeElement).parent().parent().children().last()
+      totalCount += parseInt(countLabel.text())
+    })
+  }else{
+    window.continents_popups.forEach(popup => {
+      totalCount += continentsCount[popup.continent_name];
+      popup._content.innerHTML = popup._content.innerHTML.replace(/<p>\d{1,5}/, "<p>" + continentsCount[popup.continent_name]);
+    });
+  }
+  document.getElementById("nb-items").textContent = totalCount + " Objet(s)";
+
+}
+
+function getFiltersSettings(){
+  var recordFilter = document.getElementById("with-records").checked
+  var typeFilter = document.querySelector('input[name="types"]:checked').value || "all"
+
+  function recordFilterFunction(notice) {
+    return recordFilter ? notice["URL Enregistrement"] : true;
+  }
+
+  function typeFilterFunction(notice) {
+      return typeFilter !== "all" ? normalize_string(notice["Type d'objet"]).replace("'", "_") === typeFilter : true;
+  }
+
+  function combinedFilter(notice) {
+      return recordFilterFunction(notice) && typeFilterFunction(notice);
+  }
+  return combinedFilter
+}
 
 const displayResultNumber = data => {
   var count = 0
@@ -1669,7 +1623,7 @@ const createSelectizeDOM = data => {
 
           if (country_code == ""){ return }
 
-          var detail_country = window["topojson_data"].filter(item => { return item.ISO_A2_EH == country_code })[0]
+          var detail_country = window.topojson_data.filter(item => { return item.ISO_A2_EH == country_code })[0]
           let option = {
               "id" : country_code == "" ? `${continent}-99` : country_code,
               "name_fr" : detail_country.NAME_FR,
@@ -1808,6 +1762,27 @@ const populateObjectTypes = data => {
   })
 }
 
+function onFullScreenChange() {
+    // Déplacement des éléments du DOM pour afficher les filtres avec l'option plein écran
+    var mapElement = document.getElementById('mapMusee');
+    var filterElement = document.getElementById('mapFilter');
+    var buttonElement = document.getElementById('open-close-filter');
+    var parentContainer = document.getElementById('mapElementContainer');
+  
+    // Vérifie si la carte est en mode plein écran
+    if (document.fullscreenElement === mapElement) {
+        // Si oui, déplace les éléments de filtre en dehors du conteneur de la carte
+        mapElement.appendChild(filterElement)
+        mapElement.appendChild(buttonElement)
+    } else {
+        // Si non, remet les éléments de filtre dans le conteneur de la carte
+        parentContainer.insertBefore(filterElement, mapElement)
+        parentContainer.insertBefore(buttonElement, mapElement)
+    }
+    $(filterElement).toggleClass("fullscreen-filters")
+    $(buttonElement).toggleClass("fullscreen-filters")
+}
+
 const searchBox = () => {
 
   /* SEEKER FUNCTION */
@@ -1819,16 +1794,26 @@ const searchBox = () => {
 
   $('.search-bar').submit(function(e) { e.preventDefault() })
   $('#search').click(function(e) { filterSearch() })
-
 }
-const filterSearch = () => {
 
+const filterSearch = () => {  
+
+  
   // Reset location
   selectizeItem[0].selectize.setValue("empty")
+  var filtersSettings = getFiltersSettings()
 
-  let is_record_requested = document.getElementById("with-records").checked
-  const data = is_record_requested ? window.all_recorded_instruments.raw_data : window.saved_initial_data.raw_data
+  const data = window.initial_data.raw_data
   var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
+
+  // Reset search for button reset
+  if (searchTerms == "resetMap"){
+      filteredSortedData = sortedData
+      document.getElementById("all-types").checked = true
+      document.getElementById("with-records").checked = false
+      document.getElementById("seeker").value = ""
+      searchTerms = ""
+  }
 
   // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
   let queryReg = []
@@ -1859,185 +1844,72 @@ const filterSearch = () => {
   // Prise en charge de la recherche avec mots multiples dans tous les champs de data
   if (queryReg.length > 1) {
       const findDuplicates = arr => arr.filter((item, index) => arr.indexOf(item) !== index)
-      filtered = findDuplicates(filtered.flat())
+      filtered = findDuplicates(filtered.flat()).filter(notice => filtersSettings(notice))
   } 
 
   var filterQuery = { "filtered": filtered.flat(), "query": queryReg }
-  var processed_filtered_data = createDataObject(filterQuery.filtered)
 
-  // Set filtered data for other filters
-  window.current_dataset = processed_filtered_data
-  window.current_select_data = processed_filtered_data
-  window.type_data = processed_filtered_data
-  window.data_before_filtering = processed_filtered_data
+  if (window.mapMusee == undefined) { return }
 
-  populatefilters(processed_filtered_data)
-  createContinentMarkers(processed_filtered_data)
-  map.setView(window.initial_view.latlng, window.initial_view.zoom);
+  window.mapMusee.removeControl(window.fullScreenControl);
+  window.mapMusee.off()
+  window.mapMusee.remove()
+  window.mapMusee = undefined
+
+  var dataObjectFiltered = createDataObject(filterQuery.filtered, window.object_type_data.continents_infos, window.data_countries)
+  
+  var newData = [ 
+    dataObjectFiltered,
+    window.object_type_data,
+    window.data_countries,
+    window.output_topo_data
+  ]
+  
+  generalMapMusee(newData, window.initial_data)
+
+  // Ouvrir et fermer le menu des filtres
+  $("#open-close-filter").click(e => {
+    $("#mapFilter, #open-close-filter, #mapMusee").toggleClass("open")
+    onkeyup = e => {
+      if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
+        $("#mapFilter, #open-close-filter").removeClass("open")
+      }
+    };
+  })
+
 }
 
-/* Tableau accessible Mise en attente sur une V2 */
+/**
+ * Fonction de création du bouton reset de la carte
+ * @param {Object}map - Variable contenant l'objet carte
+ */
+function createResetButton(map) {
 
-/* const accessTable = data => {
-  console.log(data)
+  // Création d'un bouton réinitialisant la carte
+  var resetButton = document.createElement("button")
+  resetButton.id= "reset-button"
+  resetButton.setAttribute("class", "leaflet-bar leaflet-control")
+  resetButton.setAttribute("type", "button")
+  resetButton.setAttribute("title", "Réinitialiser la carte")
 
-  // Create modal
-  if ($("#access-modal").length) {
-      $("#access-modal").show()
-      return
-  }
-  var modal = document.createElement("section")
-  modal.setAttribute("id", "access-modal")
+  let img = new DOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328.32 335.24">
+          <path d="m272.68,41.69c.7-1.2,1.18-2.62,2.13-3.58,8.06-8.17,16.25-16.22,24.3-24.4,5.24-5.33,11.3-7.22,18.38-4.58,6.45,2.41,9.87,8.12,9.88,16.08.03,28.45.04,56.89,0,85.34-.02,10.53-6.48,17.03-17.06,17.05-28.33.07-56.65.05-84.98,0-8.13-.01-13.87-3.55-16.35-10.11-2.69-7.13-.63-13.12,4.68-18.33,8.01-7.85,15.92-15.82,24.7-24.56-8.3-5.21-15.85-10.72-24.06-14.95-35.34-18.23-70.78-15.72-104.47,3.32-42.34,23.92-62.85,61.49-61.73,110.1,1.25,54.33,43.92,102.97,97.48,112.19,59.06,10.17,113.16-20.46,134.68-76.25,4.25-11.02,11.61-14.93,23.31-12.42,4.14.89,8.32,1.63,12.44,2.59,9.48,2.2,14.53,10.57,11.35,19.58-22.19,62.8-65.85,101.96-131.34,113.81-84.9,15.36-166.14-36.91-189.75-119.88C-19.69,121.46,37.59,25.09,129.83,4.28c51.97-11.73,97.68,1,138.54,33.99.87.7,1.74,1.42,2.62,2.11.18.14.44.2.66.29.34.34.69.69,1.03,1.03Z"/>
+      </svg>`,
+      'application/xml');
 
-  var closeButton = document.createElement("button")
-  closeButton.setAttribute("class", "btn btn-default close")
-  closeButton.textContent = "Fermer le tableau"
-  $(closeButton).click(e => {
-      $("#access-modal").remove()
-  })
-  modal.appendChild(closeButton)
+  resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
 
-  var container = document.createElement("section")
-  let title = document.createElement("h3")
-  title.textContent =  "Liste des collections du musée"
-  Object.keys(data.continents).map(continent => {
-
-    Object.keys(data.continents[continent].notices).map(country_code => {
-
-      if  (country_code == "") { country_code = "Sans Localisation"}
-      let country_name = window.c_data.convert_iso_name[country_code] || country_code
-
-      var table = document.createElement("table")
-      var caption = document.createElement("caption")
-      caption.textContent = `${continent} | ${country_name}`
-    
-      table.appendChild(caption)
-      container.appendChild(table)
-
-      //Add a header
-      var header = document.createElement("thead")
-
-      var typeHeader = document.createElement("th")
-      typeHeader.setAttribute("scope", "col")
-      typeHeader.textContent = "Type d'établissement"
-
-      var nomHeader = document.createElement("th")
-      nomHeader.setAttribute("scope", "col")
-      nomHeader.textContent = "Nom"
-
-      var adressHeader = document.createElement("th")
-      adressHeader.setAttribute("scope", "col")
-      adressHeader.textContent = "Adresse"
-
-      var telHeader = document.createElement("th")
-      telHeader.setAttribute("scope", "col")
-      telHeader.textContent = "Téléphone"
-
-      var mailHeader = document.createElement("th")
-      mailHeader.setAttribute("scope", "col")
-      mailHeader.textContent = "Mail"
-
-      var webHeader = document.createElement("th")
-      webHeader.setAttribute("scope", "col")
-      webHeader.textContent = "Site internet"
-
-      header.appendChild(typeHeader)
-      header.appendChild(nomHeader)
-      header.appendChild(adressHeader)
-      header.appendChild(telHeader)
-      header.appendChild(mailHeader)
-      header.appendChild(webHeader)
-
-      table.appendChild(header)
-
-    })
-  })
-  modal.appendChild(container)
-
-  //Add a header
-  var header = document.createElement("thead")
-
-  var typeHeader = document.createElement("th")
-  typeHeader.setAttribute("scope", "col")
-  typeHeader.textContent = "Type d'établissement"
-
-  var nomHeader = document.createElement("th")
-  nomHeader.setAttribute("scope", "col")
-  nomHeader.textContent = "Nom"
-
-  var adressHeader = document.createElement("th")
-  adressHeader.setAttribute("scope", "col")
-  adressHeader.textContent = "Adresse"
-
-  var telHeader = document.createElement("th")
-  telHeader.setAttribute("scope", "col")
-  telHeader.textContent = "Téléphone"
-
-  var mailHeader = document.createElement("th")
-  mailHeader.setAttribute("scope", "col")
-  mailHeader.textContent = "Mail"
-
-  var webHeader = document.createElement("th")
-  webHeader.setAttribute("scope", "col")
-  webHeader.textContent = "Site internet"
-
-  header.appendChild(typeHeader)
-  header.appendChild(nomHeader)
-  header.appendChild(adressHeader)
-  header.appendChild(telHeader)
-  header.appendChild(mailHeader)
-  header.appendChild(webHeader)
-
-  table.appendChild(header)
-
-  //Add a body
-
-  document.getElementById("mapMusee").appendChild(modal)
-
-  var body = document.createElement("tbody")
-  data.sort((a, b) => (a.type_equipement_ou_lieu > b.type_equipement_ou_lieu) ? 1 : ((b.type_equipement_ou_lieu > a.type_equipement_ou_lieu) ? -1 : 0))
-
-  data.map(item => {
-
-      var type = document.createElement("tr")
-      type.setAttribute("scope", "row")
-
-      var typeItem = document.createElement("td")
-      typeItem.textContent = item.type_equipement_ou_lieu
-      type.appendChild(typeItem)
-
-      var nom = document.createElement("td")
-      nom.textContent = item.nom
-      type.appendChild(nom)
-
-      var adress = document.createElement("td")
-      adress.textContent = item.adresse_postale
-      type.appendChild(adress)
-
-      var tel = document.createElement("td")
-      tel.textContent = item.telephone
-      type.appendChild(tel)
-
-      var mail = document.createElement("td")
-      mail.textContent = item.email
-      type.appendChild(mail)
-
-      var web = document.createElement("td")
-      var webButton = document.createElement("a")
-      webButton.setAttribute("class", "btn btn-default")
-      webButton.setAttribute("alt", "Nouvel onglet")
-      webButton.setAttribute("href", item.lien)
-      webButton.setAttribute("target", "_blank")
-      webButton.textContent = "Aller sur le site"
-
-      web.appendChild(webButton)
-      type.appendChild(web)
-
-      body.appendChild(type)
-
+  $(resetButton).on("click", e => {
+      document.getElementById("seeker").value = "resetMap"
+      $("#search").click()        
   })
 
-  //table.appendChild(body)
-  modal.appendChild(table)
+  // Ajoutez le bouton à la carte
+  var resetControl = L.control({ position: 'topleft' });
+  resetControl.onAdd = function() {
+      return resetButton;
+  };
+  resetControl.addTo(map);
 
-} */
+} 
