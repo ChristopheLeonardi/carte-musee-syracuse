@@ -1,21 +1,84 @@
-<section id="mapMuseeContainer">
-	<h2 class="map-title">Carte des collections du musée</h2>
-	<div>
-		<aside id="mapFilter">
-			<div>
-				<h3>Filtres</h3>
-				<p id="nb-items"></p>
-			</div>
-			<form class="search-bar" action="" id="search-bar"><fieldset id="record-search"><label for="with-records">Instruments enregistrés</label> <input type="checkbox" id="with-records" name="with-records" /></fieldset>
-				<div id="search-field"><input type="text" id="seeker" placeholder="Nom, Type, Facteur..." /> <button id="search" class="btn btn-default" type="submit" aria-label="Rechercher"> <img src="/ui/plug-in/integration/carte-instrument-musee/img/search.svg" alt="Rechercher" loading="lazy" /> </button></div>
-			</form>
-			<h3>Types d'Objets</h3>
-			<fieldset class="types" id="types-filter"></fieldset>
-			<h3>Localisation</h3>
-			<div class="custom-select"><select name="localisation" id="loc-select" placeholder="Choisissez une localisation"></select></div>
-			<div id="button-field"><button id="reset-button" class="btn btn-default" type="button">Réinitialiser les filtres</button> <button id="access-button" class="btn btn-default btn-accessible" type="button">Rechercher la sélection (nouvel onglet)</button></div>
-		</aside>
-		<div id="mapMusee"></div>
-		<div class="loader"></div>
-	</div>
-</section>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Carte</title>
+</head>
+<body>
+
+
+	<script type="text/javascript" src="/ui/plug-in/integration/carte-instrument-musee2/js/jquery-3.7.1.min.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/d3js/d3.v7.min.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/topojson/topojson.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/accessible-slick/slick.min.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/leaflet-1.9.3/leaflet.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/Leaflet.markercluster-1.4.1/dist/leaflet.markercluster.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/leaflet.fullscreen-master/Control.FullScreen.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/pako/pako.min.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/selectize/selectize.min.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/subgroup/src/subgroup.js"></script>
+	<script type="text/javascript" src="/ui/plug-in/integration/libraries/responsivePopup/leaflet.responsive.popup.js"></script>
+	<!-- <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.js"></script> -->
+	<!-- <script src="/ui/plug-in/integration/carte-instrument-musee2/js/geojson-vt.js"></script> -->
+	<!-- <script src="/ui/plug-in/integration/carte-instrument-musee2/js/leaflet-geojson-vt.js"></script> -->
+	<script type="text/javascript" src="/ui/plug-in/integration/carte-instrument-musee2/js/map.js"></script>
+
+
+	<link rel="stylesheet" type="text/css" href="/ui/skins/CIMU/polices/polices.css">
+	<link rel="stylesheet" type="text/css" href="/ui/skins/CIMU/musee.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/accessible-slick/accessible-slick-theme.min.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/accessible-slick/slick.min.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/leaflet-1.9.3/leaflet.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/Leaflet.markercluster-1.4.1/dist/MarkerCluster.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/Leaflet.markercluster-1.4.1/dist/MarkerCluster.Default.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/leaflet.fullscreen-master/Control.FullScreen.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/selectize/selectize.default.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/selectize/selectize.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/libraries/responsivePopup/leaflet.responsive.popup.css">
+	<link rel="stylesheet" type="text/css" href="/ui/plug-in/integration/carte-instrument-musee2/css/map.css">
+
+
+
+	<section id="mapMuseeContainer2">
+		<div id="mapElementContainer">
+			<aside id="mapFilter">
+				<div>				
+					<h3>Recherche</h3>
+					<p id="nb-items"></p>
+				</div>
+				<form class="search-bar" action="" id="search-bar">
+					<div id="search-field">
+						<input type="text" id="seeker" placeholder="Nom, Type, Facteur..." name="seeker" /> 
+						<button id="search" class="btn btn-default" type="submit" aria-label="Rechercher"> 
+							<img src="/ui/plug-in/integration/carte-instrument-musee2/img/search.svg" alt="Rechercher" loading="lazy" /> 
+						</button>
+					</div>
+				</form>
+				<h3>Lieu de création</h3>
+				<div class="custom-select">
+					<select name="localisation" id="loc-select" placeholder="Choisissez une localisation">
+						<option disabled="disabled" selected="selected" value="">Choisissez une localité</option>
+					</select>
+				</div>
+				<h3>Types d'Objets</h3>
+				<fieldset class="types" id="types-filter"></fieldset>
+				<form class="search-bar" action="" id="record-widget">
+					<fieldset id="record-search">
+						<label class="toggle">
+							<h3 class="toggle-label">Instr. enregistrés</h3>
+							<input class="toggle-checkbox" type="checkbox" id="with-records" name="with-records">
+								<div class="toggle-switch"></div>
+						</label>
+					</fieldset>
+				</form>
+			</aside>
+			<button id="open-close-filter" type="button" aria-pressed="false"> <img src="/ui/plug-in/integration/carte-instrument-musee2/img/filters.svg" alt="Filtres" loading="lazy" />
+				<p>Filtres</p>
+			</button>
+			<div id="mapMusee"></div>
+			<div class="loader"></div>
+		</div>
+	</section>
+</body>
+</html>

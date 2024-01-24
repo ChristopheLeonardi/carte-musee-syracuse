@@ -3,89 +3,94 @@
         { 
             "name": "Instrument_de_musique",
             "layer": "marker-cluster-instru",
-            "color": "#dbb7c1",
+            "color": "#EB8667",
             "icon": "img/instrument_de_musique.svg",
             "disabled_icon": "img/nobg-instrument_de_musique.svg",
             "type": "instrument_de_musique",
             "label": "Instrument de musique",
             "label_pluriel": "Instruments de musique",
             "cluster_multiple": false,
-            "name_system" : "musical instruments"
+            "name_system" : "musical instruments",
+            "order" : 0
         },
         
         { 
             "name": "oeuvre_d'art",
             "layer": "marker-cluster-oeuvre",
-            "color": "#a9bed8",
+            "color": "#6893DA",
             "icon": "img/oeuvre_d_art.svg",
             "disabled_icon": "img/nobg-oeuvre_d_art.svg",
             "type": "oeuvre_d_art",
             "label": "Oeuvre d'art",
             "label_pluriel": "Oeuvres d'art",
             "cluster_multiple": false,
-            "name_system" : "Oeuvre d!'art"
-        },
-        { 
-            "name": "Document_ecrit",
-            "layer": "marker-cluster-docu",
-            "color": "#b3d6fd",
-            "icon": "img/document_ecrit.svg",
-            "disabled_icon": "img/nobg-document_ecrit.svg",
-            "type": "document_ecrit",
-            "label": "Document écrit",
-            "label_pluriel": "Documents écrits",
-            "cluster_multiple": false,
-            "name_system" : "Document écrit"
+            "name_system" : "Oeuvre d!'art",
+            "order" : 2
         },
         { 
             "name": "accessoire",
             "layer": "marker-cluster-accessoire",
-            "color": "#90d4d8",
+            "color": "#56D8DB",
             "icon": "img/accessoire.svg",
             "disabled_icon": "img/nobg-accessoire.svg",
             "type": "accessoire",
             "label": "Accessoire",
             "label_pluriel": "Accessoires",
             "cluster_multiple": false,
-            "name_system" : "Accessoire"
+            "name_system" : "Accessoire",
+            "order" : 4
         },
-        
-        { 
-            "name": "outil",
-            "layer": "marker-cluster-outil",
-            "color": "#fee8be",
-            "icon": "img/outil.svg",
-            "disabled_icon": "img/nobg-outil.svg",
-            "type": "outil",
-            "label": "Outil",
-            "label_pluriel": "Outils",
-            "cluster_multiple": false,
-            "name_system" : "Outil"
-        },
-        
         { 
             "name": "element_d_instrument_de_musique",
             "layer": "marker-cluster-element_d_instrument_de_musique",
-            "color": "#EFC3FF",
+            "color": "#E574FF",
             "icon": "img/element_d_instrument_de_musique.svg",
             "disabled_icon": "img/nobg-element_d_instrument_de_musique.svg",
             "type": "element_d_instrument_de_musique",
             "label": "Élément d'instrument de musique",
             "label_pluriel":  "Éléments d'instruments de musique",
             "cluster_multiple": false,
-            "name_system" : "parts of musical instruments"
+            "name_system" : "parts of musical instruments",
+            "order" : 1
+        },
+        { 
+            "name": "Document_ecrit",
+            "layer": "marker-cluster-docu",
+            "color": "#8D88FF",
+            "icon": "img/document_ecrit.svg",
+            "disabled_icon": "img/nobg-document_ecrit.svg",
+            "type": "document_ecrit",
+            "label": "Document écrit",
+            "label_pluriel": "Documents écrits",
+            "cluster_multiple": false,
+            "name_system" : "Document écrit",
+            "order" : 3
+        },
+        { 
+            "name": "outil",
+            "layer": "marker-cluster-outil",
+            "color": "#FFC25B",
+            "icon": "img/outil.svg",
+            "disabled_icon": "img/nobg-outil.svg",
+            "type": "outil",
+            "label": "Outil",
+            "label_pluriel": "Outils",
+            "cluster_multiple": false,
+            "name_system" : "Outil",
+            "order" : 5
         },
         { 
             "name": "autre",
             "layer": "marker-cluster-autre",
-            "color": "#6da7c0",
+            "color": "#3EC2B4",
             "icon": "img/autre.svg",
             "disabled_icon": "img/nobg-autre.svg",
             "type": "autre",
             "label": "Autre",
             "label_pluriel": "Autres",
             "cluster_multiple": false,
-            "name_system" : ""
+            "name_system" : "",
+            "order" : 6
         },
         { 
             "name": "all",
@@ -95,7 +100,8 @@
             "type": "all",
             "label": "all",
             "cluster_multiple": false,
-            "name_system" : "all"
+            "name_system" : "all",
+            "order" : 99
  
         }
     ],
